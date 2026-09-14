@@ -1,0 +1,15 @@
+ALTER TABLE liquidations
+    ADD COLUMN IF NOT EXISTS montant_tva NUMERIC(19,2),
+    ADD COLUMN IF NOT EXISTS taux_tva NUMERIC(10,4),
+    ADD COLUMN IF NOT EXISTS taux_impot_retenue NUMERIC(10,4),
+    ADD COLUMN IF NOT EXISTS montant_impot_retenue NUMERIC(19,2),
+    ADD COLUMN IF NOT EXISTS detail_prestations TEXT,
+    ADD COLUMN IF NOT EXISTS agent_service_fait_id UUID REFERENCES utilisateurs(id),
+    ADD COLUMN IF NOT EXISTS date_atestation_service_fait TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS url_attestation_fiscale TEXT,
+    ADD COLUMN IF NOT EXISTS url_facture TEXT,
+    ADD COLUMN IF NOT EXISTS date_validation TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS ordonnator_id UUID REFERENCES utilisateurs(id),
+    ADD COLUMN IF NOT EXISTS controller_financier_validation_id UUID REFERENCES utilisateurs(id),
+    ADD COLUMN IF NOT EXISTS numero_liquidation_originale VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS ecart_regularise NUMERIC(19,2);

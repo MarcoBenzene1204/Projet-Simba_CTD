@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><project name="Diagramme de gantt du stage àAfroleaderShip" company="Afroleadership" webLink="http://" view-date="2026-05-25" view-index="0" gantt-divider-location="330" resource-divider-location="300" version="3.3.3322" locale="fr_FR">
+    <description/>
+    <view zooming-state="default:7" id="gantt-chart">
+        <field id="tpd3" name="Nom" width="188" order="0"/>
+        <field id="tpd4" name="Date de début" width="70" order="1"/>
+        <field id="tpd5" name="Date de fin" width="71" order="2"/>
+        <field id="tpd15" name="Notes" width="20" order="3"/>
+        <option id="taskLabelUp" value="taskDates"/>
+        <option id="taskLabelDown" value="coordinator"/>
+        <option id="taskLabelLeft" value="length"/>
+        <option id="filter.completedTasks" value="false"/>
+        <option id="filter.dueTodayTasks" value="false"/>
+        <option id="filter.overdueTasks" value="false"/>
+        <option id="filter.inProgressTodayTasks" value="false"/>
+        <timeline><![CDATA[8]]></timeline>
+        <option id="color.recent"><![CDATA[#00cccc #330033 #006600 #cc0000 #999900 #33cc00 #ff0033 #6666ff #993300]]></option>
+    </view>
+    <view id="resource-table">
+        <field id="0" name="Nom" width="210" order="0"/>
+        <field id="1" name="Rôle par défaut" width="86" order="1"/>
+    </view>
+    <!-- -->
+    <calendars>
+        <day-types>
+            <day-type id="0"/>
+            <day-type id="1"/>
+            <default-week id="1" name="default" sun="1" mon="0" tue="0" wed="0" thu="0" fri="0" sat="1"/>
+            <only-show-weekends value="false"/>
+            <overriden-day-types/>
+            <days/>
+        </day-types>
+    </calendars>
+    <tasks empty-milestones="true">
+        <taskproperties>
+            <taskproperty id="tpd0" name="type" type="default" valuetype="icon"/>
+            <taskproperty id="tpd1" name="priority" type="default" valuetype="icon"/>
+            <taskproperty id="tpd2" name="info" type="default" valuetype="icon"/>
+            <taskproperty id="tpd3" name="name" type="default" valuetype="text"/>
+            <taskproperty id="tpd4" name="begindate" type="default" valuetype="date"/>
+            <taskproperty id="tpd5" name="enddate" type="default" valuetype="date"/>
+            <taskproperty id="tpd6" name="duration" type="default" valuetype="int"/>
+            <taskproperty id="tpd7" name="completion" type="default" valuetype="int"/>
+            <taskproperty id="tpd8" name="coordinator" type="default" valuetype="text"/>
+            <taskproperty id="tpd9" name="predecessorsr" type="default" valuetype="text"/>
+        </taskproperties>
+        <task id="0" uid="36fd732a2bdd42028f659ab1639476c1" name="Phase technique" color="#993300" shape="0,1,0,1,0,0,1,0,0,1,0,1,1,0,0,0" meeting="false" start="2026-07-15" duration="44" complete="0" expand="true"/>
+        <task id="1" uid="aa118c2324cd4cee9f2417a6d4953830" name="Cahier de charge" meeting="false" start="2026-07-15" duration="5" complete="0" expand="true"/>
+        <task id="2" uid="b2274c3e45e74fb0919ce03aa87a6788" name="Dossier d'analyse" color="#ff0033" meeting="false" start="2026-07-22" duration="9" complete="0" expand="true"/>
+        <task id="3" uid="cba896f12b524185baa3092b19e22843" name="dossier de conception" color="#33cc00" meeting="false" start="2026-08-04" duration="21" complete="0" expand="true"/>
+        <task id="4" uid="87dad66602e04cdb94657a2b18e8edf3" name="Realisation du Frontend" color="#999900" meeting="false" start="2026-08-04" duration="7" complete="0" expand="true"/>
+        <task id="5" uid="cda8492dee5b40c697a4492e0acb9c91" name="Realisation du Backend" color="#cc0000" meeting="false" start="2026-08-13" duration="14" complete="0" expand="true"/>
+        <task id="6" uid="dc8143580e614d9c8f28356b4fc282e7" name="Tests et Corrections" color="#006600" meeting="false" start="2026-09-02" duration="8" complete="0" expand="true"/>
+        <task id="7" uid="e2471a4622864f10890b9b34756d8ab6" name="Redaction du guide D'utilisation" color="#330033" meeting="false" start="2026-09-11" duration="2" complete="0" expand="true"/>
+        <task id="8" uid="b27d723cd1fa43d18e1f87a5ef9d4bae" name="Redaction du rapport de stage" color="#00cccc" meeting="false" start="2026-07-01" duration="54" complete="0" expand="true"/>
+    </tasks>
+    <resources/>
+    <allocations/>
+    <vacations/>
+    <previous/>
+    <roles roleset-name="Default"/>
+</project>

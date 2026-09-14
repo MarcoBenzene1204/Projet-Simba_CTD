@@ -1,0 +1,16 @@
+CREATE INDEX idx_utilisateurs_keycloak ON utilisateurs(identifiant_keycloak);
+CREATE INDEX idx_utilisateurs_collectivite ON utilisateurs(collectivite_id);
+CREATE INDEX idx_tiers_collectivite ON tiers(collectivite_id);
+CREATE INDEX idx_exercices_collectivite ON exercices_budgetaires(collectivite_id);
+CREATE INDEX idx_budgets_collectivite ON budgets(collectivite_id);
+CREATE INDEX idx_lignes_budgetaires_collectivite ON lignes_budgetaires(collectivite_id);
+CREATE INDEX idx_engagements_collectivite ON engagements(collectivite_id);
+CREATE INDEX idx_engagements_statut ON engagements(collectivite_id, statut);
+CREATE INDEX idx_liquidations_collectivite ON liquidations(collectivite_id);
+CREATE INDEX idx_mandats_collectivite ON mandats(collectivite_id);
+CREATE INDEX idx_paiements_collectivite ON paiements(collectivite_id);
+CREATE INDEX idx_regies_collectivite ON regies(collectivite_id);
+CREATE INDEX idx_depenses_regie_regie ON depenses_regie(regie_id);
+CREATE INDEX idx_notifications_utilisateur ON notifications(utilisateur_id, lu);
+CREATE INDEX idx_audit_collectivite_date ON journal_audit(collectivite_id, date_action);
+CREATE UNIQUE INDEX uq_utilisateurs_email ON utilisateurs(email) WHERE email IS NOT NULL;

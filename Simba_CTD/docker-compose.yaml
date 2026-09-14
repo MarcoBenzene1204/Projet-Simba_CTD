@@ -1,0 +1,218 @@
+services:
+
+  # POSTGRESQL
+  # Base de données principale de SIMBA_CTD
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres_db
+    restart: unless-stopped
+
+    ports:
+      - "5433:5432"
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d Simba_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+    volumes:
+      # Données persistantes PostgreSQL
+      - postgres_data:/var/lib/postgresql/data
+
+      # Scripts exécutés lors de l'initialisation
+      # d'un nouveau volume PostgreSQL
+      - ./docker/postgres/init/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    networks:
+      - simba-network
+      - frontend-network
+
+
+  # FLYWAY
+  # Gestion des migrations de la base métier Simba_DB
+  flyway:
+    image: flyway/flyway:latest
+    container_name: flyway
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    command:
+      - -url=jdbc:postgresql://postgres:5432/Simba_DB
+      - -user=${POSTGRES_USER}
+      - -password=${POSTGRES_PASSWORD}
+      - migrate
+
+    volumes:
+      - ./src/main/resources/db/migration:/flyway/sql
+
+    networks:
+      - simba-network
+
+
+  # REDIS
+  # Cache / données temporaires
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+
+    ports:
+      - "6380:6379"
+
+    command: redis-server --requirepass admin123
+
+    volumes:
+      - redis_data:/data
+
+    networks:
+      - simba-network
+
+
+  # RABBITMQ
+  # Messaging asynchrone
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+    networks:
+      - simba-network
+
+
+  # MINIO
+  # Stockage des documents
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+    command: server /data --console-address ":9001"
+
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+
+    volumes:
+      - minio_data:/data
+
+    networks:
+      - simba-network
+
+
+  # KEYCLOAK
+  # Gestion de l'identité et de l'authentification
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.4
+    container_name: keycloak
+    restart: unless-stopped
+
+    ports:
+      - "8080:8080"
+
+    command: start-dev
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      # Compte administrateur initial de Keycloak
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+
+      # Base de données utilisée par Keycloak
+      KC_DB: ${KC_DB}
+      KC_DB_URL: ${KC_DB_URL}
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+    networks:
+      - simba-network
+      - frontend-network
+
+
+  # OPENSEARCH
+  # Moteur de recherche
+  opensearch:
+    image: opensearchproject/opensearch:2.12.0
+    container_name: opensearch
+    restart: unless-stopped
+
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+
+    environment:
+      cluster.name: ${cluster_name}
+      discovery.type: ${discovery_type}
+
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+
+    networks:
+      - simba-network
+
+
+  # ZEEBE / CAMUNDA
+  # Moteur BPM
+  zeebe:
+    image: camunda/zeebe:8.4.0
+    container_name: zeebe
+    restart: unless-stopped
+
+    ports:
+      - "26500:26500"
+      - "9601:9600"
+
+    environment:
+      ZEEBE_BROKER_GATEWAY_SECURITY_ENABLED: "false"
+
+    volumes:
+      - zeebe_data:/usr/local/zeebe/data
+
+    networks:
+      - simba-network
+
+
+# RESEAU
+networks:
+  simba-network:
+  frontend-network:
+
+
+# VOLUMES PERSISTANTS
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  zeebe_data:
+  rabbitmq_data:
+  opensearch_data:

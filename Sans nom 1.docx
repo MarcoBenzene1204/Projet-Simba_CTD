@@ -1,0 +1,15 @@
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    @GetMapping("/me")
+    public Map<String, Object> me(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return Map.of(
+            "sub", jwt.getSubject(),
+            "username", jwt.getClaimAsString("preferred_username"),
+            "email", jwt.getClaimAsString("email")
+        );
+    }
+}
