@@ -11,7 +11,9 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -21,14 +23,17 @@ public class LiquidationService {
         private final LiquidationRepository liquidationRepository;
         private final EngagementRepository engagementRepository;
         private final SecurityContextService securityContextService;
+        private final NotificationService notificationService;
 
         public LiquidationService(
                         LiquidationRepository liquidationRepository,
                         EngagementRepository engagementRepository,
-                        SecurityContextService securityContextService) {
+                        SecurityContextService securityContextService,
+                        NotificationService notificationService) {
                 this.liquidationRepository = liquidationRepository;
                 this.engagementRepository = engagementRepository;
                 this.securityContextService = securityContextService;
+                this.notificationService = notificationService;
         }
 
         // =========================================================
@@ -191,8 +196,23 @@ public class LiquidationService {
                                 .stream()
                                 .filter(existing -> existing.getEtat()
                                                 != Liquidation.EtatLiquidation.REJETEE)
-                                .map(Liquidation::getMontantTTC)
-                                .filter(java.util.Objects::nonNull)
+                                .map(existing -> {
+                                        BigDecimal montantTTC = existing.getMontantTTC();
+                                        if (montantTTC != null) {
+                                                return montantTTC;
+                                        }
+                                        if (existing.getMontantHT() == null) {
+                                                return BigDecimal.ZERO;
+                                        }
+                                        BigDecimal tauxTVA = existing.getTauxTVA() == null
+                                                        ? BigDecimal.ZERO
+                                                        : existing.getTauxTVA();
+                                        BigDecimal montantTaxes = existing.getMontantHT()
+                                                        .multiply(tauxTVA)
+                                                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                                        return existing.getMontantHT().add(montantTaxes);
+                                })
+                                .filter(Objects::nonNull)
                                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                 BigDecimal totalApresCreation = totalDejaLiquide.add(montantLiquidation);
@@ -240,8 +260,15 @@ public class LiquidationService {
                 liquidation.verifierAvantSoumission();
 
                 liquidation.soumettreAuControleurFinancier();
-
-                return liquidationRepository.save(liquidation);
+                Liquidation saved = liquidationRepository.save(liquidation);
+                notificationService.notifierRoles(collectiviteId,
+                                List.of(com.marco.Simba_CTD.Enum.RoleApplication.CONTROLEUR_FINANCIER,
+                                                com.marco.Simba_CTD.Enum.RoleApplication.ADMINISTRATEUR),
+                                securityContextService.getCurrentUserId(), "LIQUIDATION_SOUMISE",
+                                "Liquidation soumise au contrôle",
+                                saved.getNumero() + " a été soumise au contrôle financier.",
+                                "/dashboard/controleur/liquidations");
+                return saved;
         }
 
         // =========================================================
@@ -263,8 +290,10 @@ public class LiquidationService {
                 }
 
                 liquidation.validerParControleur(controleurId);
-
-                return liquidationRepository.save(liquidation);
+                Liquidation saved = liquidationRepository.save(liquidation);
+                notifierOrdonnateur(saved, "LIQUIDATION_VALIDEE", "Liquidation validée",
+                                saved.getNumero() + " a été validée par le contrôle financier.");
+                return saved;
         }
 
         // =========================================================
@@ -280,8 +309,10 @@ public class LiquidationService {
                                 collectiviteId);
 
                 liquidation.rejeter();
-
-                return liquidationRepository.save(liquidation);
+                Liquidation saved = liquidationRepository.save(liquidation);
+                notifierOrdonnateur(saved, "LIQUIDATION_REJETEE", "Liquidation rejetée",
+                                saved.getNumero() + " a été rejetée par le contrôle financier.");
+                return saved;
         }
 
         // =========================================================
@@ -349,8 +380,19 @@ public class LiquidationService {
 
                 UUID agentId = securityContextService.getCurrentUserId();
                 liquidation.attesterServiceFait(agentId);
+                Liquidation saved = liquidationRepository.save(liquidation);
+                notifierOrdonnateur(saved, "SERVICE_FAIT_ATTESTE", "Service fait attesté",
+                                "Le service fait de la liquidation " + saved.getNumero() + " a été attesté.");
+                return saved;
+        }
 
-                return liquidationRepository.save(liquidation);
+        private void notifierOrdonnateur(Liquidation liquidation, String type, String titre, String message) {
+                Engagement engagement = liquidation.getEngagement();
+                if (engagement != null) {
+                        notificationService.notifierUtilisateur(engagement.getOrdonnatorId(),
+                                        liquidation.getCollectiviteId(), type, titre, message,
+                                        "/dashboard/gestion-ordonnateur/liquidations/" + liquidation.getId());
+                }
         }
 
         // =========================================================

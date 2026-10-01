@@ -1,5 +1,7 @@
 package com.marco.Simba_CTD.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -54,6 +56,7 @@ public class Engagement {
     // =========================================================
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "type_engagement", nullable = false)
     private TypeEngagement typeEngagement;
 
@@ -90,6 +93,7 @@ public class Engagement {
     // =========================================================
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "statut", nullable = false)
     private EtatEngagement etat;
 
@@ -152,8 +156,28 @@ public class Engagement {
     // RELATIONS
     // =========================================================
 
+    @JsonIgnore
     @OneToMany(mappedBy = "engagement", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Liquidation> liquidations = new ArrayList<>();
+
+    @PrePersist
+    private void initialiserDatesCreation() {
+        LocalDateTime now = LocalDateTime.now();
+        if (dateCreation == null) {
+            dateCreation = now;
+        }
+        if (dateModification == null) {
+            dateModification = now;
+        }
+        if (dateEngagement == null) {
+            dateEngagement = LocalDate.now();
+        }
+    }
+
+    @PreUpdate
+    private void actualiserDateModification() {
+        dateModification = LocalDateTime.now();
+    }
 
     // =========================================================
     // ENUMS
@@ -462,6 +486,10 @@ public class Engagement {
 
     public void setDocumentPreparatoireId(UUID documentPreparatoireId) {
         this.documentPreparatoireId = documentPreparatoireId;
+    }
+
+    public void setDocumentM5Id(UUID documentM5Id) {
+        this.documentPreparatoireId = documentM5Id;
     }
 
     public String getNumeroEngagement() {

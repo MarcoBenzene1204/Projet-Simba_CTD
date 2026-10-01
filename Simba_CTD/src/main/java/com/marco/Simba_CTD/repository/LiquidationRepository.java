@@ -1,6 +1,7 @@
 package com.marco.Simba_CTD.repository;
 
 import com.marco.Simba_CTD.entity.Liquidation;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -31,6 +32,7 @@ public interface LiquidationRepository
     /**
      * Recherche sécurisée par ID + collectivité.
      */
+        @EntityGraph(attributePaths = "engagement")
     Optional<Liquidation> findByIdAndCollectiviteId(
             UUID id,
             UUID collectiviteId);
@@ -38,6 +40,7 @@ public interface LiquidationRepository
     /**
      * Toutes les liquidations d'une collectivité.
      */
+        @EntityGraph(attributePaths = "engagement")
     List<Liquidation> findByCollectiviteId(
             UUID collectiviteId);
 
@@ -100,6 +103,7 @@ public interface LiquidationRepository
      * Recherche les liquidations prêtes pour
      * l'ordonnancement.
      */
+    @EntityGraph(attributePaths = "engagement")
     List<Liquidation> findByCollectiviteIdAndEtat(
             UUID collectiviteId,
             Liquidation.EtatLiquidation etat);

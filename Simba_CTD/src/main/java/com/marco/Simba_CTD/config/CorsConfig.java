@@ -16,7 +16,6 @@ public class CorsConfig {
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration configuration = new CorsConfiguration();
-// @Configuration indique à Spring Boot que cette classe contient une configuration à charger au démarrage.
 
         //permet de definir l'url qui a le droit de t'appeler(frontend)
         configuration.setAllowedOrigins(
@@ -45,7 +44,9 @@ public class CorsConfig {
                         "Authorization",
                         "Content-Type",
                         "Accept",
-                        "Origin"
+                        "Origin",
+                        "X-Tenant-Id",
+                        "X-Collectivite-Id"
                 )
         );
         //permet de definir le header qu'il a le droit d'exposer 

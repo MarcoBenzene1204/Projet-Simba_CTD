@@ -9,10 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { PageHeader } from "@/components/budget/PageHeader";
-import { createEngagement, getExerciceCourant, listFournisseurs, listLignesBudgetaires } from "@/api/finance.api";
+import { createEngagement, getExerciceCourant, listDocumentsM5, listFournisseurs, listLignesBudgetaires, type DocumentM5Reference } from "@/api/finance.api";
 import { useAuthorization } from "@/auth/useAuthorization";
 import { apiErrorMessage } from "@/api/api-error";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ReferenceOption {
   id: string;
@@ -27,6 +26,7 @@ export default function CreateEngagementPage() {
   const [exercice, setExercice] = useState<{ id: string; annee: number } | null>(null);
   const [fournisseurs, setFournisseurs] = useState<ReferenceOption[]>([]);
   const [lignesBudgetaires, setLignesBudgetaires] = useState<ReferenceOption[]>([]);
+  const [documentsM5, setDocumentsM5] = useState<DocumentM5Reference[]>([]);
   const [form, setForm] = useState<{
     exerciceId: string;
     ligneBudgetaireId: string;
@@ -36,7 +36,8 @@ export default function CreateEngagementPage() {
     montantHT: string;
     tauxTVA: string;
     tauxImpot: string;
-  }>({ exerciceId: "", ligneBudgetaireId: "", tiersId: "", documentM5Id: "", objet: "", montantHT: "", tauxTVA: "", tauxImpot: "" });
+    referenceAvisDgi: string;
+  }>({ exerciceId: "", ligneBudgetaireId: "", tiersId: "", documentM5Id: "", objet: "", montantHT: "", tauxTVA: "", tauxImpot: "", referenceAvisDgi: "" });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
@@ -44,18 +45,11 @@ export default function CreateEngagementPage() {
   useEffect(() => {
     async function loadReferences() {
       try {
-        const [currentExercice, fournisseurList, ligneBudgetaireList] = await Promise.all([
-          getExerciceCourant().catch(() => ({ id: "00000000-0000-0000-0000-000000000001", annee: 2026, libelle: "2026" })),
-          listFournisseurs().catch(() => [
-            { id: "00000000-0000-0000-0000-000000000010", nom: "ABC SARL" },
-            { id: "00000000-0000-0000-0000-000000000011", nom: "ETS Exemple" },
-            { id: "00000000-0000-0000-0000-000000000012", nom: "Société XYZ" },
-          ]),
-          listLignesBudgetaires().catch(() => [
-            { id: "00000000-0000-0000-0000-000000000020", code: "601100", libelle: "Fournitures de bureau" },
-            { id: "00000000-0000-0000-0000-000000000021", code: "611200", libelle: "Entretien bâtiments" },
-            { id: "00000000-0000-0000-0000-000000000022", code: "623100", libelle: "Communication" },
-          ]),
+        const [currentExercice, fournisseurList, ligneBudgetaireList, documentM5List] = await Promise.all([
+          getExerciceCourant(),
+          listFournisseurs(),
+          listLignesBudgetaires(),
+          listDocumentsM5(),
         ]);
 
         setExercice({ id: currentExercice.id, annee: currentExercice.annee });
@@ -64,12 +58,13 @@ export default function CreateEngagementPage() {
           fournisseurList.map((item) => ({
             id: item.id,
             value: item.id,
-            label: "raisonSociale" in item ? (item.raisonSociale ?? item.nom ?? "Fournisseur") : item.nom ?? "Fournisseur",
+            label: item.nom ?? "Fournisseur",
           }))
         );
         setLignesBudgetaires(ligneBudgetaireList.map((item) => ({ id: item.id, value: item.id, label: `${item.code} — ${item.libelle}` })));
+        setDocumentsM5(documentM5List);
       } catch (_error) {
-        setError("Les référentiels de l'exercice, fournisseurs et lignes budgétaires sont indisponibles pour le moment.");
+        setError("Les référentiels, dont les documents M5, sont indisponibles pour le moment.");
       } finally {
         setLoading(false);
       }
@@ -83,6 +78,9 @@ export default function CreateEngagementPage() {
     const tva = Number(form.tauxTVA) || 0;
     return ht + (ht * tva) / 100;
   }, [form.montantHT, form.tauxTVA]);
+  const documentsM5DuType = documentsM5.filter((document) => document.typeDocument === type);
+  const documentSelectionne = documentsM5.find((document) => document.id === form.documentM5Id);
+  const champsVerrouillesParM5 = type === "BON_COMMANDE" || type === "MARCHE";
 
   if (!hasPermission("engagement:creer")) return <p className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">Vous n’avez pas la permission de créer un engagement.</p>;
 
@@ -106,6 +104,9 @@ export default function CreateEngagementPage() {
         montantHT: Number(form.montantHT),
         tauxTVA: Number(form.tauxTVA) || 0,
         tauxImpot: Number(form.tauxImpot) || 0,
+        metadata: form.referenceAvisDgi.trim()
+          ? { avisImpositionDgi: form.referenceAvisDgi.trim() }
+          : {},
       });
       navigate(`/dashboard/gestion-ordonnateur/engagement/${created.id}`);
     } catch (error) {
@@ -149,7 +150,19 @@ export default function CreateEngagementPage() {
 
                 <select
                   value={type}
-                  onChange={(event) => setType(event.target.value)}
+                  onChange={(event) => {
+                    setType(event.target.value);
+                    setForm((current) => ({
+                      ...current,
+                      documentM5Id: "",
+                      ligneBudgetaireId: "",
+                      tiersId: "",
+                      objet: "",
+                      montantHT: "",
+                      tauxTVA: "",
+                      tauxImpot: "",
+                    }));
+                  }}
                   className="h-10 w-full rounded-md border bg-background px-3 text-sm"
                 >
                   <option value="">Sélectionner</option>
@@ -166,60 +179,99 @@ export default function CreateEngagementPage() {
 
               <div className="space-y-2 md:col-span-2">
                 <Label>Référence document M5</Label>
-
-                <Input value={form.documentM5Id} onChange={(event) => setForm({ ...form, documentM5Id: event.target.value })} placeholder="Référence M5 obligatoire" disabled={!type} />
+                <select
+                  value={form.documentM5Id}
+                  onChange={(event) => {
+                    const selected = documentsM5.find((document) => document.id === event.target.value);
+                    setForm((current) => ({
+                      ...current,
+                      documentM5Id: selected?.id ?? "",
+                      ligneBudgetaireId: selected?.ligneBudgetaireId ?? "",
+                      tiersId: selected?.tiersId ?? "",
+                      objet: selected?.objet ?? "",
+                      montantHT: selected?.montantHT?.toString() ?? "",
+                      tauxTVA: selected?.montantHT && selected.montantTaxes !== undefined
+                        ? ((selected.montantTaxes / selected.montantHT) * 100).toFixed(2)
+                        : "",
+                      tauxImpot: "",
+                    }));
+                  }}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={!type || loading || documentsM5DuType.length === 0}
+                  required
+                >
+                  <option value="">
+                    {!type ? "Sélectionner d'abord le type d'engagement" : documentsM5DuType.length ? "Sélectionner un document M5" : "Aucun document M5 disponible pour ce type"}
+                  </option>
+                  {documentsM5DuType.map((document) => (
+                    <option key={document.id} value={document.id}>
+                      {document.reference}{document.objet ? ` — ${document.objet}` : ""}
+                    </option>
+                  ))}
+                </select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Référence de l'avis d'imposition DGI</Label>
+              <Input
+                value={form.referenceAvisDgi}
+                onChange={(event) => setForm((current) => ({ ...current, referenceAvisDgi: event.target.value }))}
+                placeholder="Requise avant la soumission au contrôleur financier"
+              />
             </div>
 
             <div className="space-y-2">
               <Label>Objet de la dépense</Label>
 
-              <Input required value={form.objet} onChange={(event) => setForm({ ...form, objet: event.target.value })} placeholder="Objet de l'engagement" />
+                <Input required value={form.objet} onChange={(event) => setForm({ ...form, objet: event.target.value })} placeholder="Objet de l'engagement" readOnly={champsVerrouillesParM5 && Boolean(documentSelectionne)} />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Fournisseur / Prestataire</Label>
-                <Select value={form.tiersId || null} onValueChange={(value) => setForm({ ...form, tiersId: value ?? "" })}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Sélectionner un fournisseur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fournisseurs.map((item) => (
-                      <SelectItem key={item.id} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <select
+                  value={form.tiersId}
+                  onChange={(event) => setForm((current) => ({ ...current, tiersId: event.target.value }))}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                  disabled={champsVerrouillesParM5 && Boolean(documentSelectionne)}
+                >
+                  <option value="">Sélectionner un fournisseur</option>
+                  {fournisseurs.map((item) => (
+                    <option key={item.id} value={item.value}>{item.label}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2">
                 <Label>Ligne budgétaire</Label>
-                <Select value={form.ligneBudgetaireId || null} onValueChange={(value) => setForm({ ...form, ligneBudgetaireId: value ?? "" })}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Sélectionner une ligne budgétaire" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {lignesBudgetaires.map((item) => (
-                      <SelectItem key={item.id} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <select
+                  value={form.ligneBudgetaireId}
+                  onChange={(event) => setForm((current) => ({ ...current, ligneBudgetaireId: event.target.value }))}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                  required
+                          disabled={Boolean(documentSelectionne)}
+                >
+                  <option value="">Sélectionner une ligne budgétaire</option>
+                  {lignesBudgetaires.map((item) => (
+                    <option key={item.id} value={item.value}>{item.label}</option>
+                  ))}
+                </select>
+                {documentSelectionne && !documentSelectionne.ligneBudgetaireId && (
+                  <p className="text-sm text-destructive">Ce document M5 ne contient pas d’imputation budgétaire. Demandez à l’administrateur de le compléter.</p>
+                )}
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label>Montant HT</Label>
-                <Input required min="0.01" step="0.01" type="number" value={form.montantHT} onChange={(event) => setForm({ ...form, montantHT: event.target.value })} />
+                <Input required min="0.01" step="0.01" type="number" value={form.montantHT} onChange={(event) => setForm({ ...form, montantHT: event.target.value })} readOnly={champsVerrouillesParM5 && Boolean(documentSelectionne)} />
               </div>
 
               <div className="space-y-2">
                 <Label>Taxes</Label>
-                <Input type="number" min="0" step="0.01" value={form.tauxTVA} onChange={(event) => setForm({ ...form, tauxTVA: event.target.value })} placeholder="Taux TVA (%)" />
+                <Input type="number" min="0" step="0.01" value={form.tauxTVA} onChange={(event) => setForm({ ...form, tauxTVA: event.target.value })} placeholder="Taux TVA (%)" readOnly={champsVerrouillesParM5 && Boolean(documentSelectionne)} />
               </div>
 
               <div className="space-y-2">

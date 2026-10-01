@@ -51,6 +51,15 @@ export function TenantProvider({ children }: TenantProviderProps) {
 
   // Transforme le modèle backend en modèle utilisé par le sélecteur de CTD.
   useEffect(() => {
+    if (currentTenant?.id) {
+      localStorage.setItem("simba_current_tenant_id", currentTenant.id);
+    } else if (!isLoading && (!isAuthenticated || role !== "SUPER_ADMINISTRATEUR")) {
+      localStorage.removeItem("simba_current_tenant_id");
+      sessionStorage.removeItem("simba_current_tenant_id");
+    }
+  }, [currentTenant?.id, isAuthenticated, isLoading, role]);
+
+  useEffect(() => {
     if (isLoading || !isAuthenticated) {
       setTenants([]);
       setCurrentTenantState(null);
@@ -92,7 +101,10 @@ export function TenantProvider({ children }: TenantProviderProps) {
         ? mapped
         : mapped.filter((tenant) => tenant.id === collectiviteId);
       setTenants(accessible);
-      setCurrentTenantState((current) => accessible.find((tenant) => tenant.id === current?.id) ?? accessible[0] ?? null);
+      const savedTenantId = localStorage.getItem("simba_current_tenant_id");
+      setCurrentTenantState((current) =>
+        accessible.find((tenant) => tenant.id === (current?.id ?? savedTenantId)) ?? accessible[0] ?? null,
+      );
     }).catch(() => setTenants([]));
   }, [collectiviteCouleurAccent, collectiviteCouleurPrincipale, collectiviteId, collectiviteLogoUrl, collectiviteNom, isAuthenticated, isLoading, role]);
 

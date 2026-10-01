@@ -25,22 +25,26 @@ public class SuperAdminUtilisateurController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('parametrage:lire')")
     public List<UtilisateurDTO> lister() {
         return service.listerAdministrateurs();
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize ("hasAuthority('utilisateur:creer')")
     public UtilisateurDTO creer(@Valid @RequestBody SuperAdminCreateUtilisateurRequest request) {
         return service.creerAdministrateur(request);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize ("hasAuthority('utilisateur:modifier')")
     public UtilisateurDTO modifier(@PathVariable UUID id, @Valid @RequestBody UtilisateurUpdateRequest request) {
         return service.modifierAdministrateur(id, request);
     }
 
     @PutMapping("/{id}/statut")
+    @PreAuthorize ("hasAuthority('utilisateur:modifier')")
     public UtilisateurDTO modifierStatut(@PathVariable UUID id, @Valid @RequestBody UtilisateurStatutRequest request) {
         return service.modifierStatutAdministrateur(id, request);
     }

@@ -15,6 +15,9 @@ import {
   Shield,
   Boxes,
   Sparkles,
+  Landmark,
+  HandCoins,
+  ClipboardCheck,
 } from "lucide-react";
 
 export type role =
@@ -41,6 +44,7 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
           titre: "Collectivités territoriales",
           icon: Building,
           url: "/dashboard/collectivites",
+          permission: "collectivite:lire",
         },
         {
           titre: "Administrateurs",
@@ -53,6 +57,12 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
           url: "/dashboard/utilisateurs",
         },
         {
+          titre: "Documents préparatoires M5",
+          icon: FileText,
+          url: "/dashboard/documents-m5",
+          permission: "parametrage:lire",
+        },
+        {
           titre: "Modules & paramètres",
           icon: Boxes,
           url: "/dashboard/configuration",
@@ -61,6 +71,7 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
           titre: "Journaux système",
           icon: Logs,
           url: "/dashboard/journalisation-systeme",
+          permission: "parametrage:lire"
         },
         {
           titre: "Reporting assisté par IA",
@@ -96,6 +107,7 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
           titre: "Fiches & Cartes d'accréditation",
           icon: IdCard,
           url: "/dashboard/gestion/accreditation",
+          permission: "parametrage:lire",
         },
       ],
     },
@@ -108,12 +120,19 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
           icon: LayoutList,
           url: "/dashboard/referentiel/tiers",
           comingSoon: false,
+          permission: "parametrage:lire",
         },
         {
           titre: "Lignes Budgétaires",
           icon: BadgePercent,
           url: "/dashboard/referentiel/ligne-budgetaires",
           comingSoon: false,
+        },
+        {
+          titre: "Documents préparatoires M5",
+          icon: FileText,
+          url: "/dashboard/documents-m5",
+          permission: "parametrage:lire",
         },
       ],
     },
@@ -130,6 +149,7 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
           titre: "Journaux & Logs",
           icon: Logs,
           url: "/dashboard/journalisation/logs",
+          permission: "parametrage:lire"
         },
       ],
     },
@@ -156,15 +176,35 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
           icon: Wallet,
           url: "/dashboard/gestion-ordonnateur/lignes-budgetaires",
         },
-        { titre: "Engagements", icon: FileText, url: "/dashboard/gestion-ordonnateur/engagement", permission: "engagement:lire" },
-        { titre: "Liquidations", icon: FileCheck, url: "/dashboard/gestion-ordonnateur/liquidations", permission: "liquidation:lire" },
-        { titre: "Mandats", icon: FileCheck, url: "/dashboard/gestion-ordonnateur/mandats", permission: "mandat:lire" },
-        { titre: "Paiements", icon: Wallet, url: "/dashboard/gestion-ordonnateur/paiements", permission: "paiement:lire" },
-        { titre: "Régularisations 470XX", icon: FileText, url: "/dashboard/gestion-ordonnateur/regularisations", permission: "regularisation:lire" },
+        { 
+          titre: "Engagements", 
+          icon: FileText, 
+          url: "/dashboard/gestion-ordonnateur/engagement", 
+          permission: "engagement:lire" 
+        },
+        { 
+          titre: "Liquidations", 
+          icon: FileCheck, 
+          url: "/dashboard/gestion-ordonnateur/liquidations", 
+          permission: "liquidation:lire" 
+        },
+        { 
+          titre: "Mandats", 
+          icon: FileCheck, 
+          url: "/dashboard/gestion-ordonnateur/mandats", 
+          permission: "mandat:lire" 
+        },
+        { 
+          titre: "Régularisations 470XX", 
+          icon: FileText, 
+          url: "/dashboard/regularisations", 
+          permission: "regularisation:lire" 
+        },
         {
           titre: "Gestion des Tiers",
           icon: Building,
           url: "/dashboard/referentiel/tiers",
+          permission: "parametrage:lire",
         },
       ],
     },
@@ -176,12 +216,6 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
           titre: "Reporting",
           icon: LayoutDashboard,
           url: "/dashboard/reporting",
-        },
-        {
-          titre: "Service Fait",
-          icon: CheckSquare,
-          url: "/dashboard/gestion-ordonnateur/service-fait",
-          permission: "liquidation:attester_service_fait",
         },
       ],
     },
@@ -207,11 +241,19 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
           titre: "Dossiers en Attente",
           icon: Clock,
           url: "/dashboard/controleur/en-attente",
+          permission: "engagement:lire",
         },
         {
           titre: "Historique des Visas",
           icon: FileCheck,
           url: "/dashboard/controleur/historique",
+          permission: "engagement:lire",
+        },
+        {
+          titre: "Régularisations 470XX",
+          icon: FileText,
+          url: "/dashboard/regularisations",
+          permission: "regularisation:lire",
         },
       ],
     },
@@ -223,11 +265,31 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
           titre: "Suivi des Engagements",
           icon: FileText,
           url: "/dashboard/controleur/engagements",
+          permission: "engagement:lire",
         },
         {
           titre: "Crédits & Budget",
           icon: Wallet,
-          url: "/dashboard/gestion-ordonnateur/lignes-budgetaires",
+          url: "/dashboard/referentiel/ligne-budgetaires",
+          permission: "parametrage:lire",
+        },
+        {
+          titre: "Liquidations à contrôler",
+          icon: ClipboardCheck,
+          url: "/dashboard/controleur/liquidations",
+          permission: "liquidation:lire",
+        },
+        {
+          titre: "Mandats à contrôler",
+          icon: FileCheck,
+          url: "/dashboard/controleur/mandats",
+          permission: "mandat:lire",
+        },
+        {
+          titre: "Apurements de régie",
+          icon: ClipboardCheck,
+          url: "/dashboard/controleur/regies",
+          permission: "regie:apurer",
         },
       ],
     },
@@ -258,6 +320,13 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
           titre: "Consultation Engagements",
           icon: FileText,
           url: "/dashboard/gestion-ordonnateur/engagement",
+          permission: "engagement:lire",
+        },
+        {
+          titre: "Liquidations de service fait",
+          icon: FileCheck,
+          url: "/dashboard/gestion-ordonnateur/liquidations",
+          permission: "liquidation:lire",
         },
       ],
     },
@@ -286,6 +355,23 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
       ],
     },
     {
+      label: "Régie d'avances",
+      items: [
+        {
+          titre: "Ma régie et dépenses",
+          icon: Landmark,
+          url: "/dashboard/regie",
+          permission: "regie:lire",
+        },
+        {
+          titre: "Régularisations 470XX",
+          icon: FileText,
+          url: "/dashboard/regularisations",
+          permission: "regularisation:lire",
+        },
+      ],
+    },
+    {
       label: "Aide décisionnelle",
       items: [
         {
@@ -310,6 +396,17 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
       ],
     },
     {
+      label: "Paiements à cosigner",
+      items: [
+        {
+          titre: "Ordres de paiement",
+          icon: HandCoins,
+          url: "/dashboard/paiements",
+          permission: "paiement:lire",
+        },
+      ],
+    },
+    {
       label: "Aide décisionnelle",
       items: [
         {
@@ -330,6 +427,23 @@ export const NavigationByRole: Record<role, NavGroup[]> = {
           titre: "Tableau de bord",
           icon: LayoutDashboard,
           url: "/dashboard",
+        },
+      ],
+    },
+    {
+      label: "Comptabilité et paiements",
+      items: [
+        {
+          titre: "Paiements à exécuter",
+          icon: HandCoins,
+          url: "/dashboard/paiements",
+          permission: "paiement:lire",
+        },
+        {
+          titre: "Régularisations 470XX",
+          icon: FileText,
+          url: "/dashboard/regularisations",
+          permission: "regularisation:lire",
         },
       ],
     },

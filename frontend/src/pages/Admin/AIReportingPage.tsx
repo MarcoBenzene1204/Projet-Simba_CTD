@@ -4,10 +4,12 @@ import { Bot, FileText, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { aiAssistantApi } from "@/api/ai.api";
+import { useAuth } from "@/auth/AuthContext";
 
 export default function AIReportingPage() {
+  const { role } = useAuth();
   const [prompt, setPrompt] = useState("" );
-  const [context, setContext] = useState("Rôle: Super-administrateur / Administrateur\nObjectif: suivre les performances, les anomalies, les actions prioritaires et les recommandations de pilotage.");
+  const [context, setContext] = useState(`Rôle: ${role ?? "ADMINISTRATEUR"}\nObjectif: suivre les performances, les anomalies, les actions prioritaires et les recommandations de pilotage.`);
   const [answer, setAnswer] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -33,6 +33,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/auth/AuthContext";
+import { useAuthorization } from "@/auth/useAuthorization";
+import { DashboardLink } from "@/components/dashboard/DashboardLink";
+import { getDashboardDestination } from "@/lib/dashboardNavigation";
 
 const emptyDashboard: ReportingDashboard = {
   role: "SUPER_ADMINISTRATEUR",
@@ -55,6 +58,7 @@ function formatNumber(value: number | string) {
 
 export default function SuperAdminDashboard() {
   const { username, role } = useAuth();
+  const { hasPermission } = useAuthorization();
   const [dashboard, setDashboard] = useState<ReportingDashboard>(emptyDashboard);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
@@ -147,8 +151,8 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[28px] bg-slate-950 p-6 text-white shadow-sm sm:p-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(16,185,129,0.24),transparent_35%)]" />
+      <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-slate-950 to-primary p-6 text-white shadow-sm sm:p-8">
+        {/* <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(16,185,129,0.24),transparent_35%)]" /> */}
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <Badge className="border-white/20 bg-white/10 text-xs uppercase tracking-[0.2em] text-emerald-100 hover:bg-white/10">
@@ -196,7 +200,8 @@ export default function SuperAdminDashboard() {
             const styles = ["bg-emerald-50", "bg-sky-50", "bg-amber-50", "bg-violet-50"]; const icons = [Building2, Users, Activity, ShieldCheck];
             const Icon = icons[index % icons.length];
             return (
-              <Card key={kpi.title} className={`border-0 shadow-sm ${styles[index % styles.length]}`}>
+              <DashboardLink key={kpi.title} to={getDashboardDestination(kpi.title, role ?? "SUPER_ADMINISTRATEUR", hasPermission)} label={`Ouvrir ${kpi.title}`}>
+              <Card className={`h-full border-0 shadow-sm transition-colors hover:brightness-[0.98] ${styles[index % styles.length]}`}>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-slate-600">{kpi.title}</CardTitle>
                   <Icon className="h-4 w-4 text-emerald-700" />
@@ -206,6 +211,7 @@ export default function SuperAdminDashboard() {
                   <p className="text-xs text-slate-600">{kpi.detail}</p>
                 </CardContent>
               </Card>
+              </DashboardLink>
             );
           })
         ) : (

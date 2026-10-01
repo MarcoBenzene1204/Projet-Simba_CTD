@@ -27,7 +27,7 @@ public class EngagementController {
     // =========================================================
 
     @PostMapping
-    @PreAuthorize("hasAuthority('engagement:creer')")
+        @PreAuthorize("hasRole('ORDONNATEUR') and hasAuthority('engagement:creer')")
     public ResponseEntity<Engagement> creer(
             @RequestBody Engagement engagement,
             Authentication authentication) {
@@ -45,8 +45,17 @@ public class EngagementController {
     // SOUMISSION AU CONTROLEUR FINANCIER
     // =========================================================
 
+        @PostMapping("/{id}/reserver-credits")
+        @PreAuthorize("hasRole('ORDONNATEUR') and hasAuthority('engagement:soumettre')")
+        public ResponseEntity<Engagement> reserverCredits(
+                        @PathVariable UUID id) {
+
+                return ResponseEntity.ok(
+                        engagementService.validerEtRéserverCrédits(id));
+        }
+
     @PostMapping("/{id}/soumettre")
-    @PreAuthorize("hasAuthority('engagement:soumettre')")
+        @PreAuthorize("hasRole('ORDONNATEUR') and hasAuthority('engagement:soumettre')")
     public ResponseEntity<Engagement> soumettre(
             @PathVariable UUID id,
             Authentication authentication) {
@@ -62,14 +71,20 @@ public class EngagementController {
     // =========================================================
 
     @PostMapping("/{id}/visa")
-    @PreAuthorize("hasAuthority('engagement:valider')")
+        @PreAuthorize("hasRole('CONTROLEUR_FINANCIER') and hasAuthority('engagement:valider')")
     public ResponseEntity<Engagement> apposerVisa(
             @PathVariable UUID id,
+            @RequestParam(defaultValue = "VISA") String typeAvis,
+            @RequestParam(required = false) String observations,
+            @RequestParam(required = false) String reserves,
             Authentication authentication) {
 
         return ResponseEntity.ok(
                 engagementService.apposerVisa(
                         id,
+                        typeAvis,
+                        observations,
+                        reserves,
                         authentication));
     }
 
@@ -78,7 +93,7 @@ public class EngagementController {
     // =========================================================
 
     @PostMapping("/{id}/rejeter")
-    @PreAuthorize("hasAuthority('engagement:rejeter')")
+        @PreAuthorize("hasRole('CONTROLEUR_FINANCIER') and hasAuthority('engagement:rejeter')")
     public ResponseEntity<Engagement> rejeter(
             @PathVariable UUID id,
             Authentication authentication,
@@ -96,7 +111,7 @@ public class EngagementController {
     // =========================================================
 
     @PostMapping("/{id}/confirmer")
-    @PreAuthorize("hasAuthority('engagement:confirmer')")
+        @PreAuthorize("hasRole('ORDONNATEUR') and hasAuthority('engagement:confirmer')")
     public ResponseEntity<Engagement> confirmer(
             @PathVariable UUID id,
             Authentication authentication) {

@@ -48,8 +48,8 @@ public final class TenantContext {
         if (tenantId == null) {
 
             throw new IllegalStateException(
-                    "Aucune collectivité n'est associée "
-                            + "à la requête courante.");
+                "Aucune collectivité n'est associée "
+                    + "à la requête courante.");
         }
 
         return tenantId;

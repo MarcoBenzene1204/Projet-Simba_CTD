@@ -47,6 +47,11 @@ public class CurrentUserService {
                 authentication.getToken());
     }
 
+    public String getApplicationRole() {
+        var applicationRole = getUtilisateur().getRole();
+        return applicationRole == null ? "UTILISATEUR" : applicationRole.name();
+    }
+
       //Retourne le JWT Keycloak courant.
     public Jwt getJwt() {
 

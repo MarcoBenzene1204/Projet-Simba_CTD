@@ -1,6 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TableCell, TableRow } from "@/components/ui/table";
-import { TableCarousel } from "@/components/ui/table-carousel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -175,32 +173,30 @@ export default function UsersListPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-emerald-600" /> Comptes enregistrés</CardTitle>
-          <div className="relative w-64">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher..." className="pl-8" />
           </div>
         </CardHeader>
-        <CardContent>
-          <TableCarousel
-            columns={["Nom", "Email", "Rôle", "Statut", "Collectivité"]}
-            rows={visibleUsers}
-            emptyMessage="Aucun utilisateur trouvé."
-            renderRow={(user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">
+        <CardContent className="min-w-0">
+          <div className="divide-y rounded-lg border">
+            {visibleUsers.map((user) => (
+              <article key={user.id} className="grid min-w-0 gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                <div className="min-w-0">
+                  <h3 className="truncate font-semibold text-foreground">
                     {user.nomUtilisateur || `${user.prenom ?? ""} ${user.nom ?? ""}`.trim() || user.identifiantKeycloak}
-                  </TableCell>
-                  <TableCell>{user.email || "-"}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="gap-1"><Shield className="h-3 w-3" /> {user.role}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={user.statut === "SUSPENDU" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}>{user.statut}</Badge>
-                  </TableCell>
-                  <TableCell>{user.collectiviteNom || "Toutes"}</TableCell>
-                </TableRow>
-            )}
-          />
+                  </h3>
+                  <p className="break-all text-sm text-muted-foreground">{user.email || "Aucun courriel"}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">{user.collectiviteNom || "Toutes les collectivités"}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                  <Badge variant="outline" className="gap-1"><Shield className="h-3 w-3" />{user.role.replaceAll("_", " ")}</Badge>
+                  <Badge className={user.statut === "SUSPENDU" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}>{user.statut}</Badge>
+                </div>
+              </article>
+            ))}
+            {visibleUsers.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Aucun utilisateur ne correspond à votre recherche.</p>}
+          </div>
         </CardContent>
       </Card>
 

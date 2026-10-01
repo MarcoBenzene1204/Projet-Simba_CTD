@@ -1,5 +1,6 @@
 package com.marco.Simba_CTD.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -102,6 +103,27 @@ public class Paiement {
     @Column(name = "reference_cheque", length = 150)
     private String referenceCheque;
 
+    @Column(name = "cachet_vu_bonapayer", nullable = false)
+    private boolean cachetVuBonAPayer;
+
+    @Column(name = "receveur_signature_id")
+    private UUID receveurSignatureId;
+
+    @Column(name = "date_signature_receveur")
+    private LocalDateTime dateSignatureReceveur;
+
+    @Column(name = "cosignataire_signature_id")
+    private UUID cosignataireSignatureId;
+
+    @Column(name = "date_signature_cosignataire")
+    private LocalDateTime dateSignatureCosignataire;
+
+    @Column(name = "double_signature_requise", nullable = false)
+    private boolean doubleSignatureRequise;
+
+    @Column(name = "justification_differement", columnDefinition = "TEXT")
+    private String justificationDifferement;
+
     // =========================================================
     // AUDIT
     // =========================================================
@@ -130,6 +152,8 @@ public class Paiement {
         PROGRAMME,
 
         EN_COURS,
+
+        DIFFERE,
 
         EXECUTE,
 
@@ -200,14 +224,46 @@ public class Paiement {
     // DEMARRAGE DE L'EXECUTION
     // =========================================================
 
-    public void demarrerExecution() {
+    public void demarrerExecution(UUID receveurId) {
 
-        if (statut != StatutPaiement.PROGRAMME) {
+        if (statut != StatutPaiement.PROGRAMME && statut != StatutPaiement.DIFFERE
+            && !(statut == StatutPaiement.EN_COURS && !cachetVuBonAPayer)) {
             throw new IllegalStateException(
-                    "Seul un paiement programmé peut être mis en cours.");
+                    "Seul un paiement programmé ou différé peut être mis en cours.");
         }
 
+        if (receveurId == null) throw new IllegalArgumentException("Le receveur doit être identifié.");
+
+        cachetVuBonAPayer = true;
+        receveurSignatureId = receveurId;
+        dateSignatureReceveur = LocalDateTime.now();
+        justificationDifferement = null;
+
         statut = StatutPaiement.EN_COURS;
+    }
+
+    public void signerCosignataire(UUID cosignataireId) {
+        if (statut != StatutPaiement.EN_COURS || !cachetVuBonAPayer || receveurSignatureId == null) {
+            throw new IllegalStateException("Le receveur doit d'abord apposer le cachet et signer le paiement.");
+        }
+        if (!doubleSignatureRequise) throw new IllegalStateException("Ce paiement ne requiert pas de cosignature.");
+        if (cosignataireId == null || cosignataireId.equals(receveurSignatureId)) {
+            throw new IllegalArgumentException("La cosignature doit provenir d'un autre utilisateur.");
+        }
+        if (cosignataireSignatureId != null) throw new IllegalStateException("Le paiement est déjà cosigné.");
+        cosignataireSignatureId = cosignataireId;
+        dateSignatureCosignataire = LocalDateTime.now();
+    }
+
+    public void differer(String justification) {
+        if (statut != StatutPaiement.PROGRAMME && statut != StatutPaiement.EN_COURS) {
+            throw new IllegalStateException("Seul un paiement programmé ou en cours peut être différé.");
+        }
+        if (justification == null || justification.isBlank()) {
+            throw new IllegalArgumentException("La justification du différé est obligatoire.");
+        }
+        justificationDifferement = justification.trim();
+        statut = StatutPaiement.DIFFERE;
     }
 
     // =========================================================
@@ -219,6 +275,14 @@ public class Paiement {
         if (statut != StatutPaiement.EN_COURS) {
             throw new IllegalStateException(
                     "Le paiement doit être en cours d'exécution.");
+        }
+
+        if (!cachetVuBonAPayer || receveurSignatureId == null || dateSignatureReceveur == null) {
+            throw new IllegalStateException("Le cachet VU BON A PAYER et la signature du receveur sont obligatoires.");
+        }
+        if (doubleSignatureRequise && (cosignataireSignatureId == null || dateSignatureCosignataire == null
+                || cosignataireSignatureId.equals(receveurSignatureId))) {
+            throw new IllegalStateException("La cosignature d'un second utilisateur est obligatoire.");
         }
 
         if (modeReglement == null) {
@@ -313,7 +377,10 @@ public class Paiement {
     }
 
     public boolean peutEtreExecute() {
-        return statut == StatutPaiement.EN_COURS;
+        return statut == StatutPaiement.EN_COURS
+            && cachetVuBonAPayer
+            && receveurSignatureId != null
+            && (!doubleSignatureRequise || cosignataireSignatureId != null);
     }
 
     // =========================================================
@@ -336,6 +403,7 @@ public class Paiement {
         this.collectiviteId = collectiviteId;
     }
 
+    @JsonIgnore
     public Mandat getMandat() {
         return mandat;
     }
@@ -423,6 +491,15 @@ public class Paiement {
     public void setReferenceCheque(String referenceCheque) {
         this.referenceCheque = referenceCheque;
     }
+
+    public boolean isCachetVuBonAPayer() { return cachetVuBonAPayer; }
+    public UUID getReceveurSignatureId() { return receveurSignatureId; }
+    public LocalDateTime getDateSignatureReceveur() { return dateSignatureReceveur; }
+    public UUID getCosignataireSignatureId() { return cosignataireSignatureId; }
+    public LocalDateTime getDateSignatureCosignataire() { return dateSignatureCosignataire; }
+    public boolean isDoubleSignatureRequise() { return doubleSignatureRequise; }
+    public void setDoubleSignatureRequise(boolean doubleSignatureRequise) { this.doubleSignatureRequise = doubleSignatureRequise; }
+    public String getJustificationDifferement() { return justificationDifferement; }
 
     public LocalDateTime getDateCreation() {
         return dateCreation;

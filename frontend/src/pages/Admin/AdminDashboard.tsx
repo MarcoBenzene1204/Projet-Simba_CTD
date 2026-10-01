@@ -33,6 +33,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/auth/AuthContext";
+import { useAuthorization } from "@/auth/useAuthorization";
+import { DashboardLink } from "@/components/dashboard/DashboardLink";
+import { getDashboardDestination } from "@/lib/dashboardNavigation";
 import { useTenant } from "@/tenant/TenantContext";
 
 const emptyDashboard: ReportingDashboard = {
@@ -56,6 +59,7 @@ function formatNumber(value: number | string) {
 
 export default function AdminDashboard() {
   const { username, role } = useAuth();
+  const { hasPermission } = useAuthorization();
   const { currentTenant } = useTenant();
   const [dashboard, setDashboard] = useState<ReportingDashboard>(emptyDashboard);
   const [loading, setLoading] = useState(true);
@@ -149,17 +153,17 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[28px] border border-emerald-900/10 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-700 p-6 text-white shadow-sm sm:p-8">
+      <section className="overflow-hidden rounded-[28px] bg-gradient-to-br from-primary via-esecondary to-secondary p-6 text-white shadow-sm sm:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <Badge className="border-white/20 bg-white/10 text-xs uppercase tracking-[0.2em] text-emerald-100 hover:bg-white/10">
+            <Badge className="border-white/20 bg-white/10 text-xs uppercase tracking-[0.2em] text-primary-100 hover:bg-white/10">
               Pilotage de collectivité
             </Badge>
             <div>
-              <p className="text-sm text-emerald-100">Espace administratif</p>
+              <p className="text-sm text-primary-50">Espace administratif</p>
               <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">Bonjour {username ?? "administrateur"}</h1>
             </div>
-            <p className="max-w-2xl text-sm text-emerald-50/90">
+            <p className="max-w-2xl text-sm text-primary-200">
               {currentTenant?.name ?? "Votre collectivité"} · Pilotage des performances, des validations et de la qualité de traitement.
             </p>
           </div>
@@ -169,7 +173,7 @@ export default function AdminDashboard() {
               <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               Actualiser
             </Button>
-            <Button size="sm" onClick={() => void analyzeWithAi()} disabled={analyzing} className="gap-2 bg-white text-emerald-900 hover:bg-emerald-50">
+            <Button size="sm" onClick={() => void analyzeWithAi()} disabled={analyzing} className="gap-2 bg-white text-primary hover:bg-primary">
               <Sparkles className="h-4 w-4" />
               {analyzing ? "Analyse..." : "Analyser IA"}
             </Button>
@@ -184,41 +188,45 @@ export default function AdminDashboard() {
             size="sm"
             variant={period === item ? "default" : "outline"}
             onClick={() => setPeriod(item)}
-            className={period === item ? "bg-emerald-600 hover:bg-emerald-500" : ""}
+            className={period === item ? "bg-primary hover:bg-primary-500" : ""}
           >
             {item}
           </Button>
         ))}
       </div>
 
-      <Card className="border-emerald-200 bg-emerald-50 shadow-sm">
+      <DashboardLink to={getDashboardDestination("Reporting", role ?? "ADMINISTRATEUR", hasPermission)} label="Consulter le reporting de la collectivité">
+      <Card className="border-primary-200 bg-primary-200 shadow-sm transition-colors hover:bg-primary-100">
         <CardContent className="flex flex-col gap-2 py-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-700">Périmètre KPI</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-primary">Périmètre KPI</p>
             <h2 className="text-lg font-semibold text-slate-900">{currentTenant?.name ?? "Collectivité courante"}</h2>
           </div>
-          <div className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-sm text-slate-700">
+          <div className="rounded-full border border-primary-500 bg-white px-3 py-1 text-sm text-slate-700">
             {dashboard.note || "Vue limitée à la collectivité courante."}
           </div>
         </CardContent>
       </Card>
+      </DashboardLink>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {dashboard.kpis.length > 0 ? (
           dashboard.kpis.map((kpi, index) => {
-            const styles = ["bg-emerald-50", "bg-sky-50", "bg-amber-50", "bg-violet-50"]; const icons = [Building2, Users, Activity, AlertTriangle];
+            const styles = ["bg-primary-50", "bg-sky-50", "bg-amber-50", "bg-violet-50"]; const icons = [Building2, Users, Activity, AlertTriangle];
             const Icon = icons[index % icons.length];
             return (
-              <Card key={kpi.title} className={`border-0 shadow-sm ${styles[index % styles.length]}`}>
+              <DashboardLink key={kpi.title} to={getDashboardDestination(kpi.title, role ?? "ADMINISTRATEUR", hasPermission)} label={`Ouvrir ${kpi.title}`}>
+              <Card className={`h-full border-0 shadow-sm transition-colors hover:brightness-[0.98] ${styles[index % styles.length]}`}>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-slate-600">{kpi.title}</CardTitle>
-                  <Icon className="h-4 w-4 text-emerald-700" />
+                  <Icon className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="text-3xl font-semibold text-slate-900">{formatNumber(kpi.value)}</div>
                   <p className="text-xs text-slate-600">{kpi.detail}</p>
                 </CardContent>
               </Card>
+              </DashboardLink>
             );
           })
         ) : (
@@ -231,9 +239,10 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-        <Card className="border-border/70 shadow-sm">
+        <DashboardLink to={getDashboardDestination(chartData[0]?.name ?? "Performance", role ?? "ADMINISTRATEUR", hasPermission)} label="Consulter les indicateurs de performance">
+        <Card className="h-full border-border/70 shadow-sm transition-colors hover:border-primary/40">
           <CardHeader className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg"><TrendingUp className="h-5 w-5 text-emerald-600" />Performance du module</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg"><TrendingUp className="h-5 w-5 text-primary" />Performance du module</CardTitle>
             <Badge variant="secondary">Collectivité</Badge>
           </CardHeader>
           <CardContent className="h-[320px] p-4">
@@ -248,8 +257,10 @@ export default function AdminDashboard() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        </DashboardLink>
 
-        <Card className="border-border/70 shadow-sm">
+        <DashboardLink to={getDashboardDestination("Répartition", role ?? "ADMINISTRATEUR", hasPermission)} label="Consulter la répartition du reporting">
+        <Card className="h-full border-border/70 shadow-sm transition-colors hover:border-primary/40">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg"><ShieldCheck className="h-5 w-5 text-violet-600" />Répartition</CardTitle>
           </CardHeader>
@@ -258,7 +269,7 @@ export default function AdminDashboard() {
               <PieChart>
                 <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={90} paddingAngle={4}>
                   {pieData.map((entry, index) => (
-                    <Cell key={entry.name} fill={["#10b981", "#f59e0b", "#ef4444"][index % 3]} />
+                    <Cell key={entry.name} fill={["#51e3ee", "#f59e0b", "#ef4444"][index % 3]} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -266,10 +277,12 @@ export default function AdminDashboard() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        </DashboardLink>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card className="border-border/70 shadow-sm">
+        <DashboardLink to={getDashboardDestination("Journaux & logs", role ?? "ADMINISTRATEUR", hasPermission)} label="Ouvrir les journaux système">
+        <Card className="h-full border-border/70 shadow-sm transition-colors hover:border-primary/40">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg"><Activity className="h-5 w-5 text-blue-600" />Journaux / logs</CardTitle>
           </CardHeader>
@@ -289,8 +302,10 @@ export default function AdminDashboard() {
             ))}
           </CardContent>
         </Card>
+        </DashboardLink>
 
-        <Card className="border-border/70 shadow-sm">
+        <DashboardLink to={getDashboardDestination("Analyse IA", role ?? "ADMINISTRATEUR", hasPermission)} label="Ouvrir l’assistant de reporting">
+        <Card className="h-full border-border/70 shadow-sm transition-colors hover:border-primary/40">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg"><Sparkles className="h-5 w-5 text-violet-600" />Analyse IA premium</CardTitle>
           </CardHeader>
@@ -299,7 +314,7 @@ export default function AdminDashboard() {
               {diagnosisCards.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div key={item.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div key={item.title} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm">
                       <Icon className="h-4 w-4" />
                     </div>
@@ -315,23 +330,24 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+        </DashboardLink>
       </div>
 
       <Card className="border-border/70 shadow-sm">
         <CardHeader className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg"><FileText className="h-5 w-5 text-emerald-600" />Synthèse opérationnelle</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-lg"><FileText className="h-5 w-5 text-primary" />Synthèse opérationnelle</CardTitle>
           <Badge variant="secondary" className="gap-1"><BadgeCheck className="h-3.5 w-3.5" />Risque maîtrisé</Badge>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           {dashboard.insights.length > 0 ? (
             dashboard.insights.map((insight, idx) => (
-              <div key={insight} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <DashboardLink key={insight} to={getDashboardDestination("Synthèse opérationnelle", role ?? "ADMINISTRATEUR", hasPermission)} label={`Consulter le point ${idx + 1}`} className="rounded-xl border border-slate-200 bg-slate-50 p-4 hover:border-primary/40 hover:bg-primary/5">
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Point {idx + 1}</span>
-                  <ArrowRight className="h-4 w-4 text-emerald-600" />
+                  <ArrowRight className="h-4 w-4 text-primary" />
                 </div>
                 <p className="text-sm leading-6 text-slate-700">{insight}</p>
-              </div>
+              </DashboardLink>
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 md:col-span-3">

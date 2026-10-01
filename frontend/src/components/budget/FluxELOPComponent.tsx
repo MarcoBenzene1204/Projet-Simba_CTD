@@ -33,6 +33,7 @@ import { TypeFacture } from "@/types/budget";
 import type {
   Engagement,
 } from "@/types/budget";
+import { TypeEngagement } from "@/types/budget";
 
 /**
  * Composant principal du flux ELOP
@@ -50,7 +51,9 @@ import type {
 export const FluxELOPComponent: React.FC = () => {
   // États pour le formulaire d'engagement
   const [documentM5Id, setDocumentM5Id] = useState("");
-  const [ordonnatorId, setOrdonnatorId] = useState("");
+  const [exerciceId, setExerciceId] = useState("");
+  const [ligneBudgetaireId, setLigneBudgetaireId] = useState("");
+  const [objet, setObjet] = useState("");
   const [engagementCurrentId, setEngagementCurrentId] = useState<string | null>(
     null
   );
@@ -82,14 +85,19 @@ export const FluxELOPComponent: React.FC = () => {
       setLoading(true);
       setErrorMessage("");
 
-      if (!documentM5Id || !ordonnatorId) {
-        throw new Error("Document M5 et Ordonnateur sont obligatoires");
+      if (!documentM5Id || !exerciceId || !ligneBudgetaireId || !objet) {
+        throw new Error("Document M5, exercice, ligne budgétaire et objet sont obligatoires");
       }
 
       // Appel API pour créer l'engagement
       const newEngagement = await engagementApi.creerEngagement(
-        documentM5Id,
-        ordonnatorId
+        {
+          documentM5Id,
+          exerciceId,
+          ligneBudgetaireId,
+          typeEngagement: TypeEngagement.BON_DE_COMMANDE,
+          objet,
+        },
       );
 
       setEngagementCurrentId(newEngagement.id);
@@ -318,10 +326,12 @@ export const FluxELOPComponent: React.FC = () => {
 
       if (!engagementCurrentId) throw new Error("Engagement non défini");
 
+      if (!liquidationCurrentId) throw new Error("Liquidation non définie");
+
       const mandat = await mandatApi.creerMandat(
         engagementCurrentId,
         "INDIVIDUEL",
-        ordonnatorId
+        [liquidationCurrentId]
       );
       setMandatCurrentId(mandat.id);
       setSuccessMessage(
@@ -345,9 +355,7 @@ export const FluxELOPComponent: React.FC = () => {
 
       if (!mandatCurrentId) throw new Error("Mandat non défini");
 
-      const cfId = "cf-001";
-
-      await mandatApi.apposeVisaCFEtCachet(mandatCurrentId, cfId);
+      await mandatApi.apposeVisaCFEtCachet(mandatCurrentId, "");
       setSuccessMessage(
         "✅ Cachet 'DEPENSE VALIDEE' apposé. Prêt pour transmission au Receveur."
       );
@@ -370,12 +378,7 @@ export const FluxELOPComponent: React.FC = () => {
 
       if (!mandatCurrentId) throw new Error("Mandat non défini");
 
-      const receveId = "receveur-001";
-
-      await mandatApi.transmettreAuReceveur(
-        mandatCurrentId,
-        receveId
-      );
+      await mandatApi.transmettreAuReceveur(mandatCurrentId, "");
       setSuccessMessage(
         "✅ Mandat transmis au Receveur. Prêt pour paiement."
       );
@@ -400,26 +403,11 @@ export const FluxELOPComponent: React.FC = () => {
 
       if (!mandatCurrentId) throw new Error("Mandat non défini");
 
-      const receveId = "receveur-001";
-
       // Créer instruction de paiement
       const paiement = await paiementApi.creerInstructionPaiement(
         mandatCurrentId,
-        receveId
+        "VIREMENT_BANCAIRE"
       );
-      // Effectuer vérifications
-      await paiementApi.effectuerVerifications(paiement.id, {
-        validiteCreance: true,
-        prescriptionOK: true,
-        pasOppositions: true,
-        redevabiliteOK: true
-      });
-
-      // Déterminer mode de paiement
-      await paiementApi.determinierModePaiementEtCachet(paiement.id, false);
-
-      // Signatures
-      await paiementApi.enregistrerSignatureReceveur(paiement.id);
 
       // Effectuer paiement
       const paiementEffectue = await paiementApi.effectuerPaiement(paiement.id);
@@ -498,19 +486,41 @@ export const FluxELOPComponent: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Ordonnateur ID
+                    Exercice ID
                   </label>
                   <Input
-                    placeholder="ID du ordonnateur"
-                    value={ordonnatorId}
-                    onChange={(e) => setOrdonnatorId(e.target.value)}
+                    placeholder="UUID de l'exercice budgétaire"
+                    value={exerciceId}
+                    onChange={(e) => setExerciceId(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Ligne budgétaire ID
+                  </label>
+                  <Input
+                    placeholder="UUID de la ligne budgétaire"
+                    value={ligneBudgetaireId}
+                    onChange={(e) => setLigneBudgetaireId(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Objet de la dépense
+                  </label>
+                  <Input
+                    placeholder="Objet de l'engagement"
+                    value={objet}
+                    onChange={(e) => setObjet(e.target.value)}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Button
                     onClick={handleCreerEngagement}
-                    disabled={loading || !documentM5Id || !ordonnatorId}
+                    disabled={loading || !documentM5Id || !exerciceId || !ligneBudgetaireId || !objet}
                     className="w-full"
                   >
                     1️⃣ Créer Engagement

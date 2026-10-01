@@ -37,6 +37,9 @@ class LiquidationServiceTest {
     @Mock
     private SecurityContextService securityContextService;
 
+        @Mock
+        private NotificationService notificationService;
+
     @Mock
     private Authentication authentication;
 

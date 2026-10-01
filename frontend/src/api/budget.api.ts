@@ -13,11 +13,21 @@ import type {
   DépenseRegie,
   ApurementRegie,
   ApiResponse,
-  PaginatedResponse,
   BudgetSummary
 } from "@/types/budget";
 
-const BASE_URL = "/api/v1/budget";
+const BASE_URL = "";
+
+export interface EngagementCreatePayload {
+  exerciceId: string;
+  ligneBudgetaireId: string;
+  typeEngagement: string;
+  objet: string;
+  documentM5Id: string;
+  montantHT?: number;
+  tauxTVA?: number;
+  tauxImpot?: number;
+}
 
 /**
  * Service API pour les engagements budgétaires (FC-DEP-001)
@@ -36,44 +46,42 @@ export const engagementApi = {
    * Crée un nouvel engagement budgétaire
    * Règle métier: RG-DEP-001 - Document M5 obligatoire
    */
-  creerEngagement: async (documentM5Id: string, ordonnatorId: string) => {
-    const response = await apiClient.post<ApiResponse<Engagement>>(
+  creerEngagement: async (payload: EngagementCreatePayload) => {
+    const response = await apiClient.post<Engagement>(
       `${BASE_URL}/engagements`,
-      { documentM5Id, ordonnatorId }
+      payload,
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
    * Récupère un engagement par son ID
    */
   obtenirEngagement: async (engagementId: string) => {
-    const response = await apiClient.get<ApiResponse<Engagement>>(
+    const response = await apiClient.get<Engagement>(
       `${BASE_URL}/engagements/${engagementId}`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
    * Liste les engagements avec pagination
    */
   listerEngagements: async (page: number = 0, size: number = 20) => {
-    const response = await apiClient.get<
-      ApiResponse<PaginatedResponse<Engagement>>
-    >(`${BASE_URL}/engagements`, {
+    const response = await apiClient.get<Engagement[]>(`${BASE_URL}/engagements`, {
       params: { page, size }
     });
-    return response.data.data;
+    return response.data;
   },
 
   /**
    * Liste les engagements d'un ordonnateur
    */
   listerEngagementsOrdonnateur: async (ordonnatorId: string) => {
-    const response = await apiClient.get<ApiResponse<Engagement[]>>(
+    const response = await apiClient.get<Engagement[]>(
       `${BASE_URL}/engagements/ordonnateur/${ordonnatorId}`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -81,10 +89,10 @@ export const engagementApi = {
    * Règle métier: RG-DEP-002 - Crédits suffisants
    */
   validerEtRéserverCrédits: async (engagementId: string) => {
-    const response = await apiClient.put<ApiResponse<Engagement>>(
-      `${BASE_URL}/engagements/${engagementId}/valider`
+    const response = await apiClient.post<Engagement>(
+      `${BASE_URL}/engagements/${engagementId}/reserver-credits`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -93,13 +101,12 @@ export const engagementApi = {
    */
   soumettreAuControllerFinancier: async (
     engagementId: string,
-    controllerFinancierVisaId: string
+    _controllerFinancierVisaId: string
   ) => {
-    const response = await apiClient.put<ApiResponse<Engagement>>(
-      `${BASE_URL}/engagements/${engagementId}/soumettre-cf`,
-      { controllerFinancierVisaId }
+    const response = await apiClient.post<Engagement>(
+      `${BASE_URL}/engagements/${engagementId}/soumettre`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -108,15 +115,23 @@ export const engagementApi = {
    */
   apposeVisaCF: async (
     engagementId: string,
-    controllerFinancierVisaId: string,
+    _controllerFinancierVisaId: string,
     typeVisa: "VISA" | "OBSERVATIONS" | "RESERVES" | "REJET",
     motifRejet?: string
   ) => {
-    const response = await apiClient.put<ApiResponse<Engagement>>(
-      `${BASE_URL}/engagements/${engagementId}/apposevisacf`,
-      { controllerFinancierVisaId, typeVisa, motifRejet }
+    if (typeVisa === "REJET") {
+      const response = await apiClient.post<Engagement>(
+        `${BASE_URL}/engagements/${engagementId}/rejeter`,
+        undefined,
+        { params: { motif: motifRejet ?? "Rejeté par le contrôleur financier" } },
+      );
+      return response.data;
+    }
+
+    const response = await apiClient.post<Engagement>(
+      `${BASE_URL}/engagements/${engagementId}/visa`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -124,10 +139,10 @@ export const engagementApi = {
    * Génère numéro unique avec horodatage WAT UTC+1
    */
   confirmerEngagement: async (engagementId: string) => {
-    const response = await apiClient.put<ApiResponse<Engagement>>(
+    const response = await apiClient.post<Engagement>(
       `${BASE_URL}/engagements/${engagementId}/confirmer`
     );
-    return response.data.data;
+    return response.data;
   }
 };
 
@@ -140,21 +155,21 @@ export const liquidationApi = {
    * Règle métier: RG-DEP-008 - Service fait attesté obligatoire
    */
   creerLiquidation: async (engagementId: string) => {
-    const response = await apiClient.post<ApiResponse<Liquidation>>(
-      `${BASE_URL}/liquidations`,
+    const response = await apiClient.post<Liquidation>(
+      `${BASE_URL}/liquidations/engagement/${engagementId}`,
       { engagementId }
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
    * Récupère une liquidation par son ID
    */
   obtenirLiquidation: async (liquidationId: string) => {
-    const response = await apiClient.get<ApiResponse<Liquidation>>(
+    const response = await apiClient.get<Liquidation>(
       `${BASE_URL}/liquidations/${liquidationId}`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -163,13 +178,12 @@ export const liquidationApi = {
    */
   attesterServiceFait: async (
     liquidationId: string,
-    agentServiceFaitId: string
+    _agentServiceFaitId: string
   ) => {
-    const response = await apiClient.put<ApiResponse<Liquidation>>(
-      `${BASE_URL}/liquidations/${liquidationId}/attester-service-fait`,
-      { agentServiceFaitId }
+    const response = await apiClient.post<Liquidation>(
+      `${BASE_URL}/liquidations/${liquidationId}/service-fait`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -177,30 +191,26 @@ export const liquidationApi = {
    * Types: COMPLETE, PARTIELLE, PRO_FORMA, AVOIR, RECTIFICATIVE, REGULARISATION
    */
   enregistrerFacture: async (
-    liquidationId: string,
-    data: {
+    _liquidationId: string,
+    _data: {
       typeFacture: string;
       numeroFacture: string;
       dateFacture: Date;
       montantHT: number;
       detailPrestations?: string;
     }
-  ) => {
-    const response = await apiClient.post<ApiResponse<Liquidation>>(
-      `${BASE_URL}/liquidations/${liquidationId}/enregistrer-facture`,
-      data
-    );
-    return response.data.data;
+  ): Promise<Liquidation> => {
+    throw new Error("L'enregistrement de facture n'est pas encore exposé par l'API backend.");
   },
 
   /**
    * Soumet la liquidation au Contrôleur Financier
    */
   soumettreAuControllerFinancier: async (liquidationId: string) => {
-    const response = await apiClient.put<ApiResponse<Liquidation>>(
-      `${BASE_URL}/liquidations/${liquidationId}/soumettre-cf`
+    const response = await apiClient.post<Liquidation>(
+      `${BASE_URL}/liquidations/${liquidationId}/soumettre`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -208,33 +218,32 @@ export const liquidationApi = {
    */
   validerLiquidation: async (
     liquidationId: string,
-    controllerFinancierValidationId: string
+    _controllerFinancierValidationId: string
   ) => {
-    const response = await apiClient.put<ApiResponse<Liquidation>>(
-      `${BASE_URL}/liquidations/${liquidationId}/valider`,
-      { controllerFinancierValidationId }
+    const response = await apiClient.post<Liquidation>(
+      `${BASE_URL}/liquidations/${liquidationId}/valider`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
    * Prépare pour ordonnancement
    */
   preparerPourOrdonnancement: async (liquidationId: string) => {
-    const response = await apiClient.put<ApiResponse<Liquidation>>(
+    const response = await apiClient.post<Liquidation>(
       `${BASE_URL}/liquidations/${liquidationId}/preparer-ordonnancement`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
    * Liste les liquidations d'un engagement
    */
   listerLiquidationsEngagement: async (engagementId: string) => {
-    const response = await apiClient.get<ApiResponse<Liquidation[]>>(
+    const response = await apiClient.get<Liquidation[]>(
       `${BASE_URL}/liquidations/engagement/${engagementId}`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -269,35 +278,36 @@ export const mandatApi = {
    * Types: INDIVIDUEL, COLLECTIF, REGULARISATION, RETENUE_GARANTIE, REGLEMENT_OFFICE
    */
   creerMandat: async (
-    engagementId: string,
+    exerciceId: string,
     typeMandat: string,
-    ordonnatorId: string
+    liquidationIds: string[]
   ) => {
-    const response = await apiClient.post<ApiResponse<Mandat>>(
+    const response = await apiClient.post<Mandat>(
       `${BASE_URL}/mandats`,
-      { engagementId, typeMandat, ordonnatorId }
+      liquidationIds,
+      { params: { exerciceId, typeMandat } },
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
    * Récupère un mandat par son ID
    */
   obtenirMandat: async (mandatId: string) => {
-    const response = await apiClient.get<ApiResponse<Mandat>>(
+    const response = await apiClient.get<Mandat>(
       `${BASE_URL}/mandats/${mandatId}`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
    * Soumet le mandat au Contrôleur Financier
    */
   soumettreAuControllerFinancier: async (mandatId: string) => {
-    const response = await apiClient.put<ApiResponse<Mandat>>(
-      `${BASE_URL}/mandats/${mandatId}/soumettre-cf`
+    const response = await apiClient.post<Mandat>(
+      `${BASE_URL}/mandats/${mandatId}/soumettre`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -306,13 +316,12 @@ export const mandatApi = {
    */
   apposeVisaCFEtCachet: async (
     mandatId: string,
-    controllerFinancierVisaId: string
+    _controllerFinancierVisaId: string
   ) => {
-    const response = await apiClient.put<ApiResponse<Mandat>>(
-      `${BASE_URL}/mandats/${mandatId}/appose-visa-cachet`,
-      { controllerFinancierVisaId }
+    const response = await apiClient.post<Mandat>(
+      `${BASE_URL}/mandats/${mandatId}/visa`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -322,13 +331,12 @@ export const mandatApi = {
    */
   transmettreAuReceveur: async (
     mandatId: string,
-    receveId: string
+    _receveId: string
   ) => {
-    const response = await apiClient.put<ApiResponse<Mandat>>(
-      `${BASE_URL}/mandats/${mandatId}/transmettre-receveur`,
-      { receveId }
+    const response = await apiClient.post<Mandat>(
+      `${BASE_URL}/mandats/${mandatId}/transmettre-receveur`
     );
-    return response.data.data;
+    return response.data;
   }
 };
 
@@ -341,23 +349,24 @@ export const paiementApi = {
    */
   creerInstructionPaiement: async (
     mandatId: string,
-    receveId: string
+    modeReglement: "CAISSE" | "CHEQUE" | "VIREMENT_BANCAIRE"
   ) => {
-    const response = await apiClient.post<ApiResponse<Paiement>>(
-      `${BASE_URL}/paiements`,
-      { mandatId, receveId }
+    const response = await apiClient.post<Paiement>(
+      `${BASE_URL}/paiements/mandat/${mandatId}`,
+      undefined,
+      { params: { modeReglement } },
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
    * Récupère un paiement par son ID
    */
   obtenirPaiement: async (paiementId: string) => {
-    const response = await apiClient.get<ApiResponse<Paiement>>(
+    const response = await apiClient.get<Paiement>(
       `${BASE_URL}/paiements/${paiementId}`
     );
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -424,10 +433,10 @@ export const paiementApi = {
    * Règle métier: RG-DEP-019 - Clôture au 31 janvier N+1
    */
   effectuerPaiement: async (paiementId: string) => {
-    const response = await apiClient.put<ApiResponse<Paiement>>(
-      `${BASE_URL}/paiements/${paiementId}/effectuer`
+    const response = await apiClient.post<Paiement>(
+      `${BASE_URL}/paiements/${paiementId}/executer`
     );
-    return response.data.data;
+    return response.data;
   }
 };
 

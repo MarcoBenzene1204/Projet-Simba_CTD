@@ -34,7 +34,7 @@ export default function AdminLayout() {
       <SidebarInset>
         <SiteHeader />
 
-        <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">
+        <div className="mx-auto min-w-0 w-full max-w-[1600px] overflow-x-clip p-4 sm:p-6 lg:p-8">
           <Outlet />
         </div>
 

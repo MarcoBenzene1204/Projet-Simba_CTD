@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Search, ReceiptText } from "lucide-react";
-import { attestServiceDone, listLiquidations, submitLiquidation, validateLiquidation, type LiquidationRecord } from "@/api/finance.api";
+import { attestServiceDone, listLiquidations, rejectLiquidation, submitLiquidation, validateLiquidation, type LiquidationRecord } from "@/api/finance.api";
 import { useAuthorization } from "@/auth/useAuthorization";
 import { apiErrorMessage } from "@/api/api-error";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,11 @@ import { Input } from "@/components/ui/input";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { TableCarousel } from "@/components/ui/table-carousel";
 
-export default function ListeLiquidation() {
+interface ListeLiquidationProps {
+	modeControleur?: boolean;
+}
+
+export default function ListeLiquidation({ modeControleur = false }: ListeLiquidationProps) {
 	const [liquidations, setLiquidations] = useState<LiquidationRecord[]>([]);
 	const [search, setSearch] = useState("");
 	const [loading, setLoading] = useState(true);
@@ -41,14 +45,17 @@ export default function ListeLiquidation() {
 	}, [hasPermission]);
 
 	const visibleLiquidations = useMemo(() => {
+		const scopedLiquidations = modeControleur
+			? liquidations.filter((liquidation) => liquidation.etat === "SOUMISE_CF")
+			: liquidations;
 		const query = search.trim().toLowerCase();
-		if (!query) return liquidations;
-		return liquidations.filter((liquidation) =>
+		if (!query) return scopedLiquidations;
+		return scopedLiquidations.filter((liquidation) =>
 			`${liquidation.numero} ${liquidation.numeroFacture} ${liquidation.etat} ${liquidation.engagement?.numeroEngagement ?? ""}`
 				.toLowerCase()
 				.includes(query),
 		);
-	}, [liquidations, search]);
+	}, [liquidations, modeControleur, search]);
 
 	if (!hasPermission("liquidation:lire")) {
 		return <p className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">Vous n’avez pas la permission de consulter les liquidations.</p>;
@@ -59,9 +66,9 @@ export default function ListeLiquidation() {
 			<div className="flex items-end justify-between">
 				<div>
 				<p className="text-sm text-muted-foreground">Gestion financière</p>
-				<h1 className="text-2xl font-semibold tracking-tight">Liquidations</h1>
+				<h1 className="text-2xl font-semibold tracking-tight">{modeControleur ? "Liquidations à contrôler" : "Liquidations"}</h1>
 				</div>
-				{hasPermission("liquidation:creer") && <Button onClick={() => navigate("/dashboard/gestion-ordonnateur/liquidations/nouveau")} >Nouvelle liquidation</Button>}
+				{!modeControleur && hasPermission("liquidation:creer") && <Button onClick={() => navigate("/dashboard/gestion-ordonnateur/liquidations/nouveau")} >Nouvelle liquidation</Button>}
 			</div>
 			<Card>
 				<CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -70,17 +77,18 @@ export default function ListeLiquidation() {
 				</CardHeader>
 				<CardContent>
 					{error && <p className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
-					{loading ? <p className="py-8 text-center text-muted-foreground">Chargement des liquidations...</p> : <TableCarousel columns={["Numéro", "Engagement", "Facture", "Date", "Montant TTC", "État", "Actions"]} rows={visibleLiquidations} emptyMessage="Aucune liquidation trouvée." renderRow={(liquidation) => <TableRow key={liquidation.id}>
+					{loading ? <p className="py-8 text-center text-muted-foreground">Chargement des liquidations...</p> : <TableCarousel columns={["Numéro", "Engagement", "Facture", "Date", "Montant TTC", "État", "Actions"]} rows={visibleLiquidations} emptyMessage={modeControleur ? "Aucune liquidation soumise au contrôle financier." : "Aucune liquidation trouvée."} renderRow={(liquidation) => <TableRow key={liquidation.id}>
 								<TableCell className="font-mono font-medium">{liquidation.numero}</TableCell>
 								<TableCell>{liquidation.engagement?.numeroEngagement ?? "-"}</TableCell>
 								<TableCell>{liquidation.numeroFacture}</TableCell>
 								<TableCell>{new Date(liquidation.dateFacture).toLocaleDateString("fr-FR")}</TableCell>
 								<TableCell className="text-right font-semibold">{formatCurrency(liquidation.montantTTC)}</TableCell>
 								<TableCell><Badge variant="secondary">{liquidation.etat}</Badge></TableCell>
-								<TableCell className="text-right"><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => navigate(`/dashboard/gestion-ordonnateur/liquidations/${liquidation.id}`)}>Détails</Button>
+								<TableCell className="text-right"><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => navigate(`${modeControleur ? "/dashboard/controleur/liquidations" : "/dashboard/gestion-ordonnateur/liquidations"}/${liquidation.id}`)}>Détails</Button>
 									{liquidation.etat === "BROUILLON" && hasPermission("liquidation:attester_service_fait") && <Button size="sm" variant="outline" onClick={() => void transition(liquidation, () => attestServiceDone(liquidation.id), "attester le service fait")}>Service fait</Button>}
 									{liquidation.etat === "BROUILLON" && liquidation.serviceFaitAt && hasPermission("liquidation:soumettre") && <Button size="sm" variant="outline" onClick={() => void transition(liquidation, () => submitLiquidation(liquidation.id), "soumettre")}>Soumettre</Button>}
 									{liquidation.etat === "SOUMISE_CF" && hasPermission("liquidation:valider") && <Button size="sm" onClick={() => void transition(liquidation, () => validateLiquidation(liquidation.id), "valider")}>Valider</Button>}
+									{modeControleur && liquidation.etat === "SOUMISE_CF" && hasPermission("liquidation:rejeter") && <Button size="sm" variant="destructive" onClick={() => void transition(liquidation, () => rejectLiquidation(liquidation.id), "rejeter")}>Rejeter</Button>}
 								</div></TableCell>
 							</TableRow>} />}
 				</CardContent>

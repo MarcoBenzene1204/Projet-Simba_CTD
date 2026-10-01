@@ -85,6 +85,31 @@ public class TenantFilter extends OncePerRequestFilter {
             Utilisateur utilisateur = securityContextService
                     .getCurrentUser();
 
+            UUID requestedTenantId = resolveTenantIdFromRequest(request);
+
+            if (requestedTenantId != null) {
+                if (securityContextService.isSuperAdministrateur()
+                        || utilisateur.getCollectivite() == null
+                        || requestedTenantId.equals(utilisateur.getCollectivite().getId())) {
+                    request.setAttribute("collectiviteId", requestedTenantId);
+                    TenantContext.setTenant(requestedTenantId);
+
+                    try {
+                        filterChain.doFilter(request, response);
+                    } finally {
+                        TenantContext.clear();
+                    }
+
+                    return;
+                }
+
+                response.sendError(
+                        HttpServletResponse.SC_FORBIDDEN,
+                        "La collectivité demandée n'est pas accessible à cet utilisateur.");
+
+                return;
+            }
+
             /*
              * Vérification du statut.
              */
@@ -157,7 +182,7 @@ public class TenantFilter extends OncePerRequestFilter {
                 TenantContext.clear();
             }
 
-        } catch (SecurityException | IllegalStateException exception) {
+        } catch (SecurityException | IllegalStateException | IllegalArgumentException exception) {
 
             response.sendError(
                     HttpServletResponse.SC_FORBIDDEN,
@@ -178,4 +203,22 @@ public class TenantFilter extends OncePerRequestFilter {
                 || uri.equals("/actuator/health")
                 || request.getMethod().equalsIgnoreCase("OPTIONS");
     }
+
+        private UUID resolveTenantIdFromRequest(HttpServletRequest request) {
+                String tenantId = request.getHeader("X-Tenant-Id");
+
+                if (tenantId == null || tenantId.isBlank()) {
+                        tenantId = request.getHeader("X-Collectivite-Id");
+                }
+
+                if (tenantId == null || tenantId.isBlank()) {
+                        return null;
+                }
+
+                try {
+                        return UUID.fromString(tenantId.trim());
+                } catch (IllegalArgumentException ignored) {
+                        throw new IllegalArgumentException("Le header X-Tenant-Id contient un identifiant invalide.");
+                }
+        }
 }

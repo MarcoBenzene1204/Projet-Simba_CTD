@@ -34,7 +34,7 @@ public class CollectiviteController {
 
 
     // LISTE DES COLLECTIVITÉS
-
+    @PreAuthorize ("hasAuthority('collectivite:lire')")
     @GetMapping
     public List<CollectiviteDTO> findAll() {
 
@@ -48,6 +48,7 @@ public class CollectiviteController {
     // UNE COLLECTIVITÉ
 
     @GetMapping("/{id}")
+    @PreAuthorize ("hasAuthority('collectivite:lire')")
     public ResponseEntity<CollectiviteDTO> findById(
         @PathVariable UUID id
     ) {
@@ -62,6 +63,7 @@ public class CollectiviteController {
     // CRÉATION
 
     @PostMapping
+    @PreAuthorize ("hasAuthority('collectivite:creer')")
     public ResponseEntity<CollectiviteDTO> create(
         @Valid @RequestBody CollectiviteRequest request
     ) {
@@ -77,6 +79,7 @@ public class CollectiviteController {
     // MODIFICATION
 
     @PutMapping("/{id}")
+    @PreAuthorize ("hasAuthority('collectivite:modifier')")
     public ResponseEntity<CollectiviteDTO> update(
         @PathVariable UUID id,
         @Valid @RequestBody CollectiviteRequest request
@@ -99,6 +102,7 @@ public class CollectiviteController {
     // SUPPRESSION
 
     @DeleteMapping("/{id}")
+    @PreAuthorize ("hasAuthority('collectivite:supprimer')")
     public ResponseEntity<Void> delete(
         @PathVariable UUID id
     ) {

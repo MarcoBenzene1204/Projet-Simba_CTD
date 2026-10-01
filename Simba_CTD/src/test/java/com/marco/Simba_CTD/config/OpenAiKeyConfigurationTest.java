@@ -4,10 +4,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
+import org.springframework.test.context.TestPropertySource;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
+@TestPropertySource(properties = "gemini.api.key=test-gemini-key")
 class OpenAiKeyConfigurationTest {
 
     @Autowired
@@ -17,9 +19,10 @@ class OpenAiKeyConfigurationTest {
     void geminiKeyIsLoadedFromAppEnvironment() {
         String apiKey = environment.getProperty("gemini.api.key");
 
-        assertFalse(
-                apiKey == null || apiKey.isBlank(),
-                "La clé Gemini doit être chargée depuis la configuration de l’application."
+        assertEquals(
+            "test-gemini-key",
+            apiKey,
+            "La clé Gemini doit être chargée depuis la configuration de l’application."
         );
     }
 }

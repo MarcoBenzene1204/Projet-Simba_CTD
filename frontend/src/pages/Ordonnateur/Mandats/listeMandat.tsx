@@ -11,7 +11,11 @@ import { Input } from "@/components/ui/input";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { TableCarousel } from "@/components/ui/table-carousel";
 
-export default function ListeMandat() {
+interface ListeMandatProps {
+	modeControleur?: boolean;
+}
+
+export default function ListeMandat({ modeControleur = false }: ListeMandatProps) {
 	const [mandats, setMandats] = useState<MandatRecord[]>([]);
 	const [search, setSearch] = useState("");
 	const [loading, setLoading] = useState(true);
@@ -38,21 +42,24 @@ export default function ListeMandat() {
 	}, [hasPermission]);
 
 	const visibleMandats = useMemo(() => {
+		const scopedMandats = modeControleur
+			? mandats.filter((mandat) => mandat.etat === "SOUMIS_CF")
+			: mandats;
 		const query = search.trim().toLowerCase();
-		return query ? mandats.filter((mandat) => `${mandat.numeroMandat} ${mandat.typeMandat} ${mandat.etat}`.toLowerCase().includes(query)) : mandats;
-	}, [mandats, search]);
+		return query ? scopedMandats.filter((mandat) => `${mandat.numeroMandat} ${mandat.typeMandat} ${mandat.etat}`.toLowerCase().includes(query)) : scopedMandats;
+	}, [mandats, modeControleur, search]);
 
 	if (!hasPermission("mandat:lire")) {
 		return <p className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">Vous n’avez pas la permission de consulter les mandats.</p>;
 	}
 
 	return <div className="space-y-6">
-		<div className="flex items-end justify-between"><div><p className="text-sm text-muted-foreground">Chaîne de dépense</p><h1 className="text-2xl font-semibold tracking-tight">Mandats</h1></div>{hasPermission("mandat:creer") && <Button onClick={() => navigate("/dashboard/gestion-ordonnateur/mandats/nouveau")}>Nouveau mandat</Button>}</div>
+		<div className="flex items-end justify-between"><div><p className="text-sm text-muted-foreground">Chaîne de dépense</p><h1 className="text-2xl font-semibold tracking-tight">{modeControleur ? "Mandats à contrôler" : "Mandats"}</h1></div>{!modeControleur && hasPermission("mandat:creer") && <Button onClick={() => navigate("/dashboard/gestion-ordonnateur/mandats/nouveau")}>Nouveau mandat</Button>}</div>
 		<Card>
 			<CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><CardTitle className="flex items-center gap-2"><FileCheck className="h-5 w-5 text-primary" />Suivi des mandats</CardTitle><div className="relative w-full sm:w-72"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher un mandat..." className="pl-8" /></div></CardHeader>
 			<CardContent>
 				{error && <p className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
-				{loading ? <p className="py-8 text-center text-muted-foreground">Chargement des mandats...</p> : <TableCarousel columns={["Numéro", "Type", "Date", "Montant", "État", "Actions"]} rows={visibleMandats} emptyMessage="Aucun mandat trouvé." renderRow={(mandat) => <TableRow key={mandat.id}><TableCell className="font-mono font-medium">{mandat.numeroMandat}</TableCell><TableCell>{mandat.typeMandat}</TableCell><TableCell>{new Date(mandat.dateMandatement).toLocaleDateString("fr-FR")}</TableCell><TableCell className="text-right font-semibold">{formatCurrency(mandat.montantTTCMandate)}</TableCell><TableCell><Badge variant="secondary">{mandat.etat}</Badge></TableCell><TableCell className="text-right"><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => navigate(`/dashboard/gestion-ordonnateur/mandats/${mandat.id}`)}>Détails</Button>
+				{loading ? <p className="py-8 text-center text-muted-foreground">Chargement des mandats...</p> : <TableCarousel columns={["Numéro", "Type", "Date", "Montant", "État", "Actions"]} rows={visibleMandats} emptyMessage={modeControleur ? "Aucun mandat soumis au contrôle financier." : "Aucun mandat trouvé."} renderRow={(mandat) => <TableRow key={mandat.id}><TableCell className="font-mono font-medium">{mandat.numeroMandat}</TableCell><TableCell>{mandat.typeMandat}</TableCell><TableCell>{new Date(mandat.dateMandatement).toLocaleDateString("fr-FR")}</TableCell><TableCell className="text-right font-semibold">{formatCurrency(mandat.montantTTCMandate)}</TableCell><TableCell><Badge variant="secondary">{mandat.etat}</Badge></TableCell><TableCell className="text-right"><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => navigate(`${modeControleur ? "/dashboard/controleur/mandats" : "/dashboard/gestion-ordonnateur/mandats"}/${mandat.id}`)}>Détails</Button>
 						{mandat.etat === "BROUILLON" && hasPermission("mandat:soumettre") && <Button size="sm" variant="outline" onClick={() => void transition(mandat, () => submitMandat(mandat.id), "soumettre")}>Soumettre</Button>}
 						{mandat.etat === "SOUMIS_CF" && hasPermission("mandat:valider") && <Button size="sm" variant="outline" onClick={() => void transition(mandat, () => validateMandat(mandat.id), "viser")}>Viser</Button>}
 						{mandat.etat === "VISE_CF" && hasPermission("mandat:transmettre_receveur") && <Button size="sm" onClick={() => void transition(mandat, () => transmitMandatToReceiver(mandat.id), "transmettre au receveur")}>Transmettre</Button>}

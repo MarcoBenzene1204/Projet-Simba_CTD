@@ -43,6 +43,7 @@ export interface Engagement {
   dateCreation: Date;
   dateVisa?: Date;
   motifRejet?: string;
+  metadata?: Record<string, unknown>;
   depassementCreditAutorise?: boolean;
   creditsReserves: boolean;
 }

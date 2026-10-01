@@ -67,7 +67,7 @@ public class ReportingController {
     public Map<String, Object> dashboard() {
         UUID collectiviteId = resolveCollectiviteId();
         boolean globalView = currentUserService.isSuperAdministrateur();
-        String role = currentUserService.getRoles().stream().findFirst().orElse("UTILISATEUR");
+        String role = currentUserService.getApplicationRole();
 
         List<Utilisateur> users = globalView
                 ? utilisateurRepository.findAllWithCollectivite()

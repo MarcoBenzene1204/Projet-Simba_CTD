@@ -182,9 +182,19 @@ public class RegieAvancesService {
      * @param apurementId ID de l'apurement
      * @param controllerFinancierVisaId ID du CF
      */
-    public void apporterVisaCFApurement(UUID apurementId, UUID controllerFinancierVisaId) {
-        ApurementRegie apurement = apurementRegieRepository.findById(apurementId)
-            .orElseThrow(() -> new IllegalArgumentException("Apurement introuvable"));
+    public List<ApurementRegie> listerApurementsCollectivite(UUID collectiviteId) {
+        if (collectiviteId == null) {
+            throw new IllegalArgumentException("La collectivité est obligatoire.");
+        }
+        return apurementRegieRepository.findAllForCollectivite(collectiviteId);
+    }
+
+    public ApurementRegie apporterVisaCFApurement(UUID apurementId, UUID collectiviteId, UUID controllerFinancierVisaId) {
+        if (collectiviteId == null || controllerFinancierVisaId == null) {
+            throw new IllegalArgumentException("La collectivité et le contrôleur financier sont obligatoires.");
+        }
+        ApurementRegie apurement = apurementRegieRepository.findByIdForCollectivite(apurementId, collectiviteId)
+            .orElseThrow(() -> new IllegalArgumentException("Apurement introuvable dans cette collectivité."));
 
         if (apurement.getEtat() != ApurementRegie.EtatApurement.EN_COURS) {
             throw new IllegalStateException("Apurement doit être en cours");
@@ -202,6 +212,7 @@ public class RegieAvancesService {
         regieavances.setMontantAutorises(montantAutorises);
         regieavances.setEtat(RegieAvances.EtatRegie.ACTIVE);
         regieAvancesRepository.save(regieavances);
+        return apurement;
     }
 
     /**

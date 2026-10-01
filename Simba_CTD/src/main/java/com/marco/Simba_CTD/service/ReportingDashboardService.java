@@ -44,7 +44,7 @@ public class ReportingDashboardService {
 
     public Map<String, Object> buildDashboard() {
         boolean globalView = currentUserService.isSuperAdministrateur();
-        String role = currentUserService.getRoles().stream().findFirst().orElse("UTILISATEUR");
+        String role = currentUserService.getApplicationRole();
 
         UUID collectiviteId = null;
         try {

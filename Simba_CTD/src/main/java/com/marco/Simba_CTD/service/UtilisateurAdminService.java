@@ -61,7 +61,7 @@ public class UtilisateurAdminService {
     @Transactional(readOnly = true)
     public List<UtilisateurDTO> listerAdministrateurs() {
         return utilisateurRepository.findAllByRole(RoleApplication.ADMINISTRATEUR)
-                .stream().map(this::versDTO).toList();
+            .stream().map(this::versDTO).toList();
     }
 
     @Transactional(readOnly = true)
@@ -80,6 +80,7 @@ public class UtilisateurAdminService {
         return versDTO(utilisateurRepository.save(utilisateur));
     }
 
+    // Methode utilisée par les administrateurs pour créer des utilisateurs dans leur collectivité
     public UtilisateurDTO creerUtilisateurDeMaCollectivite(AdminCreateUtilisateurRequest request) {
         if (request.role() == RoleApplication.ADMINISTRATEUR
                 || request.role() == RoleApplication.SUPER_ADMINISTRATEUR) {
@@ -91,9 +92,9 @@ public class UtilisateurAdminService {
             throw new IllegalStateException("L'administrateur n'est associé à aucune collectivité.");
         }
         Utilisateur utilisateur = new Utilisateur(
-                request.identifiantKeycloak().trim(), request.nomUtilisateur(), request.prenom(),
-                request.nom(), request.email(), request.telephone(), request.matricule(),
-                collectivite, request.role(), StatutUtilisateur.ACTIF);
+            request.identifiantKeycloak().trim(), request.nomUtilisateur(), request.prenom(),
+            request.nom(), request.email(), request.telephone(), request.matricule(),
+            collectivite, request.role(), StatutUtilisateur.ACTIF);
         return versDTO(utilisateurRepository.save(utilisateur));
     }
 

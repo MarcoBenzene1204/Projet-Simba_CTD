@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "@/auth/AuthContext";
+import { useAuthorization } from "@/auth/useAuthorization";
 import type { RoleApplication } from "@/config/roleConfig";
 import { LoaderPinwheel } from "lucide-react";
 import { AccessDenied } from "@/components/auth/AccessDenied";
@@ -13,7 +14,8 @@ export default function ProtectedRoute({
   allowedRoles = [],
   allowedPermissions = [],
 }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, role, permissions } = useAuth();
+  const { isAuthenticated, isLoading, role } = useAuth();
+  const { hasPermission } = useAuthorization();
   const location = useLocation();
 
   if (isLoading) {
@@ -45,7 +47,7 @@ export default function ProtectedRoute({
     }
   }
 
-  if (allowedPermissions.length > 0 && !allowedPermissions.some((permission) => permissions.includes(permission))) {
+  if (allowedPermissions.length > 0 && !allowedPermissions.some(hasPermission)) {
     return <AccessDenied />;
   }
 

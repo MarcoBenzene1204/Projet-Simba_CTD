@@ -1,4 +1,4 @@
-package com.marco.Simba_CTD.controller;
+package com.marco.Simba_CTD.controler;
 
 import com.marco.Simba_CTD.entity.Collectivite;
 import com.marco.Simba_CTD.service.CurrentUserService;

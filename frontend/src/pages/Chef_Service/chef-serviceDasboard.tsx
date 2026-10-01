@@ -6,6 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { reportingApi, type ReportingDashboard } from "@/api/reporting.api";
 import { useAuth } from "@/auth/AuthContext";
 import { useTenant } from "@/tenant/TenantContext";
+import { useAuthorization } from "@/auth/useAuthorization";
+import { useNavigate } from "react-router";
+import { DashboardLink } from "@/components/dashboard/DashboardLink";
+import { getDashboardDestination } from "@/lib/dashboardNavigation";
 
 const initialDashboard: ReportingDashboard = {
   role: "CHEF_SERVICE",
@@ -17,7 +21,9 @@ const initialDashboard: ReportingDashboard = {
 };
 
 export default function ChefServiceDashboard() {
-  const { username } = useAuth();
+  const { username, role } = useAuth();
+  const { hasPermission } = useAuthorization();
+  const navigate = useNavigate();
   const { currentTenant } = useTenant();
   const [dashboard, setDashboard] = useState<ReportingDashboard>(initialDashboard);
   const [loading, setLoading] = useState(true);
@@ -59,7 +65,7 @@ export default function ChefServiceDashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[24px] border border-emerald-900/10 bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-600 p-6 text-white shadow-sm">
+      <section className="rounded-[24px] border border-emerald-900/10 bg-gradient-to-br from-primary to-secondary p-6 text-white shadow-sm">
         <p className="text-sm uppercase tracking-[0.2em] text-emerald-100">Pilotage terrain</p>
         <h1 className="mt-2 text-3xl font-semibold">Bonjour {username ?? "chef de service"}</h1>
         <p className="mt-2 text-sm text-emerald-50/90">{currentTenant?.name ?? "Votre collectivité"} · Suivi des engagements, liquidations et dossiers de terrain.</p>
@@ -70,7 +76,8 @@ export default function ChefServiceDashboard() {
           const icons = [FileText, Activity, ShieldCheck, Users];
           const Icon = icons[index % icons.length];
           return (
-            <Card key={kpi.title} className="border-0 shadow-sm bg-emerald-50/60">
+            <DashboardLink key={kpi.title} to={getDashboardDestination(kpi.title, role ?? "CHEF_SERVICE", hasPermission)} label={`Ouvrir ${kpi.title}`}>
+            <Card className="h-full border-0 bg-primary/8 shadow-sm transition-colors hover:bg-primary/12">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-slate-700">{kpi.title}</CardTitle>
                 <Icon className="h-4 w-4 text-emerald-700" />
@@ -80,6 +87,7 @@ export default function ChefServiceDashboard() {
                 <p className="text-xs text-slate-600">{kpi.detail}</p>
               </CardContent>
             </Card>
+            </DashboardLink>
           );
         })}
       </div>
@@ -92,7 +100,7 @@ export default function ChefServiceDashboard() {
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
             {chartData.map((item) => (
-              <div key={item.label} className="rounded-xl border bg-slate-50 p-4">
+              <DashboardLink key={item.label} to={getDashboardDestination(item.label, role ?? "CHEF_SERVICE", hasPermission)} label={`Consulter ${item.label}`} className="rounded-xl border bg-slate-50 p-4 hover:border-primary/50 hover:bg-primary/5">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-600">{item.label}</span>
                   <span className="text-lg font-semibold">{item.value}</span>
@@ -100,7 +108,7 @@ export default function ChefServiceDashboard() {
                 <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
                   <div className="h-full rounded-full bg-emerald-600" style={{ width: `${Math.min(item.value * 10, 100)}%` }} />
                 </div>
-              </div>
+              </DashboardLink>
             ))}
           </div>
 
@@ -111,7 +119,7 @@ export default function ChefServiceDashboard() {
       </Card>
 
       <div className="flex justify-end">
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2" onClick={() => navigate(getDashboardDestination("attestations service fait", role ?? "CHEF_SERVICE", hasPermission))}>
           Suivi détaillé <ArrowRight className="h-4 w-4" />
         </Button>
       </div>

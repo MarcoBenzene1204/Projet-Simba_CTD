@@ -1,5 +1,6 @@
 package com.marco.Simba_CTD.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -532,6 +533,7 @@ public class Mandat {
         return dateModification;
     }
 
+    @JsonIgnore
     public List<LigneMandat> getLignes() {
         return lignes;
     }

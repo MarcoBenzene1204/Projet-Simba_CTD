@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -28,7 +29,7 @@ public class PaiementController {
     // =========================================================
 
     @PostMapping("/mandat/{mandatId}")
-    @PreAuthorize("hasAuthority('paiement:creer')")
+        @PreAuthorize("hasRole('RECEVEUR') and hasAuthority('paiement:creer')")
     public ResponseEntity<Paiement> creer(
             @PathVariable UUID mandatId,
             @RequestParam Paiement.ModeReglement modeReglement,
@@ -46,12 +47,23 @@ public class PaiementController {
                 .body(paiement);
     }
 
+    @GetMapping("/mandats-a-payer")
+    @PreAuthorize("hasRole('RECEVEUR') and hasAuthority('paiement:lire')")
+    public List<MandatDisponibleResponse> mandatsAPayer(Authentication authentication) {
+        UUID collectiviteId = securityContextCollectivite();
+        return paiementService.listerMandatsAProgrammer(collectiviteId).stream()
+                .map(mandat -> new MandatDisponibleResponse(mandat.getId(), mandat.getNumeroMandat(),
+                        mandat.getTypeMandat().name(), mandat.getMontantTTCMandate(), mandat.getDateMandatement(),
+                        paiementService.mandatRequiertCosignature(mandat)))
+                .toList();
+    }
+
     // =========================================================
     // DEMARRER EXECUTION
     // =========================================================
 
     @PostMapping("/{id}/demarrer")
-    @PreAuthorize("hasAuthority('paiement:executer')")
+        @PreAuthorize("hasRole('RECEVEUR') and hasAuthority('paiement:executer')")
     public ResponseEntity<Paiement> demarrer(
             @PathVariable UUID id,
             Authentication authentication) {
@@ -62,20 +74,38 @@ public class PaiementController {
                         authentication));
     }
 
+        @PostMapping("/{id}/cosigner")
+        @PreAuthorize("hasRole('COSIGNATAIRE') and hasAuthority('paiement:cosigner')")
+        public ResponseEntity<Paiement> cosigner(@PathVariable UUID id, Authentication authentication) {
+                return ResponseEntity.ok(paiementService.cosignerPaiement(id, authentication));
+        }
+
     // =========================================================
     // EXECUTER
     // =========================================================
 
     @PostMapping("/{id}/executer")
-    @PreAuthorize("hasAuthority('paiement:executer')")
+    @PreAuthorize("hasRole('RECEVEUR') and hasAuthority('paiement:executer')")
     public ResponseEntity<Paiement> executer(
             @PathVariable UUID id,
+            @RequestBody(required = false) PaiementExecutionRequest request,
             Authentication authentication) {
 
         return ResponseEntity.ok(
                 paiementService.executerPaiement(
                         id,
+                        request == null ? null : request.referenceBancaire(),
+                        request == null ? null : request.referenceCheque(),
                         authentication));
+    }
+
+    @PostMapping("/{id}/differe")
+    @PreAuthorize("hasRole('RECEVEUR') and hasAuthority('paiement:executer')")
+    public ResponseEntity<Paiement> differer(
+            @PathVariable UUID id,
+            @RequestBody PaiementDifferementRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(paiementService.differerPaiement(id, request.justification(), authentication));
     }
 
     // =========================================================
@@ -83,7 +113,7 @@ public class PaiementController {
     // =========================================================
 
     @PostMapping("/{id}/echec")
-    @PreAuthorize("hasAuthority('paiement:echouer')")
+        @PreAuthorize("hasRole('RECEVEUR') and hasAuthority('paiement:rejeter')")
     public ResponseEntity<Paiement> echouer(
             @PathVariable UUID id,
             Authentication authentication) {
@@ -93,6 +123,17 @@ public class PaiementController {
                         id,
                         authentication));
     }
+
+        private UUID securityContextCollectivite() {
+                return com.marco.Simba_CTD.config.TenantContext.requireTenant();
+        }
+
+        public record PaiementExecutionRequest(String referenceBancaire, String referenceCheque) {}
+
+        public record PaiementDifferementRequest(String justification) {}
+
+        public record MandatDisponibleResponse(UUID id, String numeroMandat, String typeMandat,
+                        BigDecimal montantTTCMandate, LocalDate dateMandatement, boolean doubleSignatureRequise) {}
 
     // =========================================================
     // DETAIL

@@ -71,7 +71,7 @@ public class Regularisation470XXController {
     // ============================================================
 
         @PostMapping("/{id}/comptabiliser-470xx")
-        @PreAuthorize("hasAuthority('regularisation:comptabiliser')")
+        @PreAuthorize("hasAuthority('regularisation:regulariser')")
         public ResponseEntity<Regularisation470XX> comptabiliser(
                         @PathVariable UUID id,
                         @RequestParam String numeroEcriture) {
@@ -99,13 +99,13 @@ public class Regularisation470XXController {
             @PathVariable UUID id) {
 
         return ResponseEntity.ok(
-                                service.creerEngagementRetrospectif(id));
-    }
+                service.creerEngagementRetrospectif(id));
+    }   
 
         @PostMapping("/{id}/reserver-credits")
         @PreAuthorize("hasAuthority('regularisation:engager')")
         public ResponseEntity<Regularisation470XX> reserverCredits(
-                        @PathVariable UUID id) {
+                @PathVariable UUID id) {
 
                 return ResponseEntity.ok(service.reserverCreditsEngagement(id));
         }

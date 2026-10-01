@@ -64,11 +64,14 @@ public class ArisAssistantService {
         String answerText;
 
         if (apiKey == null || apiKey.isBlank()) {
-            // The assistant remains useful for navigation when no provider is
-            // configured, but it must not pretend that a requested analysis ran.
             answerText = buildFallbackAnswer(question, role, permissions, currentRoute);
         } else {
-            answerText = openAiReportingService.generateResponse(contextualPrompt, context);
+            try {
+                answerText = openAiReportingService.generateResponse(contextualPrompt, context);
+            } catch (IllegalStateException exception) {
+                answerText = buildFallbackAnswer(question, role, permissions, currentRoute)
+                        + "\n\nLe fournisseur IA est momentanément indisponible. La réponse ci-dessus repose sur les règles locales de Simba_CTD.";
+            }
         }
 
         Map<String, Object> response = new HashMap<>();

@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Building2, Pencil, Plus, RefreshCcw } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Building2, Pencil, Plus, RefreshCcw, Search } from "lucide-react";
 
 import { createCollectivite, listCollectivites, updateCollectivite, updateCollectiviteStatus, type Collectivite, type CollectivitePayload } from "@/api/collectivites.api";
 import { apiErrorMessage } from "@/api/api-error";
@@ -24,6 +24,7 @@ export default function SuperAdminCollectivitesPage() {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<Collectivite | null>(null);
   const [form, setForm] = useState<CollectivitePayload>(emptyForm);
+  const [search, setSearch] = useState("");
 
   const load = async () => {
     try {
@@ -38,6 +39,15 @@ export default function SuperAdminCollectivitesPage() {
   };
 
   useEffect(() => { void load(); }, []);
+
+  const filteredCollectivites = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("fr-FR");
+    if (!query) return collectivites;
+    return collectivites.filter((collectivite) =>
+      [collectivite.nom, collectivite.code, collectivite.type, collectivite.region, collectivite.departement]
+        .some((value) => value?.toLocaleLowerCase("fr-FR").includes(query)),
+    );
+  }, [collectivites, search]);
 
   const toggleStatus = async (collectivite: Collectivite) => {
     const statut = collectivite.statut === "SUSPENDUE" ? "ACTIVE" : "SUSPENDUE";
@@ -80,8 +90,13 @@ export default function SuperAdminCollectivitesPage() {
 
       {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
+      <label className="relative block w-full max-w-xl">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher par commune, code, type ou région" className="pl-9" aria-label="Rechercher une collectivité" />
+      </label>
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {collectivites.map((collectivite) => (
+        {filteredCollectivites.map((collectivite) => (
           <Card key={collectivite.id}>
             <CardHeader className="flex flex-row items-start justify-between gap-3">
               <div>
@@ -101,7 +116,7 @@ export default function SuperAdminCollectivitesPage() {
         ))}
       </div>
 
-      {!loading && collectivites.length === 0 && <p className="py-12 text-center text-sm text-muted-foreground">Aucune collectivité enregistrée.</p>}
+      {!loading && filteredCollectivites.length === 0 && <p className="py-12 text-center text-sm text-muted-foreground">{collectivites.length === 0 ? "Aucune collectivité enregistrée." : "Aucune collectivité ne correspond à votre recherche."}</p>}
 
       {formOpen && <div className="fixed inset-0 z-50 overflow-y-auto bg-black/30 p-4"><form onSubmit={(event) => void save(event)} className="mx-auto my-8 w-full max-w-3xl space-y-4 rounded-xl bg-white p-6 shadow-xl"><div><h2 className="text-xl font-semibold">{editing ? "Modifier la collectivité" : "Ajouter une collectivité"}</h2><p className="text-sm text-muted-foreground">Les champs marqués d’un astérisque sont obligatoires.</p></div><div className="grid gap-3 sm:grid-cols-2"><Input required placeholder="Code *" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} /><Input required placeholder="Nom *" value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} /><select required className="h-10 rounded-md border bg-white px-3 text-sm" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{types.map((type) => <option key={type}>{type}</option>)}</select><select className="h-10 rounded-md border bg-white px-3 text-sm" value={form.statut} onChange={(e) => setForm({ ...form, statut: e.target.value })}>{statuts.map((statut) => <option key={statut}>{statut}</option>)}</select><Input placeholder="Région" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} /><Input placeholder="Département" value={form.departement} onChange={(e) => setForm({ ...form, departement: e.target.value })} /><Input placeholder="Arrondissement" value={form.arrondissement} onChange={(e) => setForm({ ...form, arrondissement: e.target.value })} /><Input placeholder="Téléphone" value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} /><Input type="email" placeholder="E-mail" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /><Input placeholder="Adresse" value={form.adresse} onChange={(e) => setForm({ ...form, adresse: e.target.value })} /><Input placeholder="URL du logo" value={form.logoUrl} onChange={(e) => setForm({ ...form, logoUrl: e.target.value })} /><Input placeholder="Devise" value={form.devise} onChange={(e) => setForm({ ...form, devise: e.target.value })} /><label className="flex items-center gap-2 text-sm">Couleur principale <input type="color" value={form.couleurPrincipale} onChange={(e) => setForm({ ...form, couleurPrincipale: e.target.value })} /></label><label className="flex items-center gap-2 text-sm">Couleur d’accent <input type="color" value={form.couleurAccent} onChange={(e) => setForm({ ...form, couleurAccent: e.target.value })} /></label></div><div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setFormOpen(false)}>Annuler</Button><Button type="submit" disabled={saving}>{saving ? "Enregistrement…" : editing ? "Enregistrer" : "Créer la CTD"}</Button></div></form></div>}
     </div>

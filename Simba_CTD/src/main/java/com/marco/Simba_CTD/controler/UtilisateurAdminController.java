@@ -36,39 +36,45 @@ public class UtilisateurAdminController {
     }
 
     @GetMapping
+    @PreAuthorize ("hasAuthority('parametrage:lire')")
     public List<UtilisateurDTO> lister() {
         return utilisateurAdminService.lister();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize ("hasAuthority('parametrage:lire')")
     public UtilisateurDTO consulter(@PathVariable UUID id) {
         return utilisateurAdminService.consulter(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize ("hasAuthority('parametrage:creer')")
     public UtilisateurDTO creer(@Valid @RequestBody UtilisateurRequest request) {
         return utilisateurAdminService.creer(request);
     }
 
     @PostMapping("/admin-only")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'SUPER_ADMINISTRATEUR')")
     @ResponseStatus(HttpStatus.CREATED)
     public UtilisateurDTO creerUtilisateur(@Valid @RequestBody AdminCreateUtilisateurRequest request) {
         return utilisateurAdminService.creerUtilisateurDeMaCollectivite(request);
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'SUPER_ADMINISTRATEUR')")
     public UtilisateurDTO modifier(@PathVariable UUID id, @RequestBody Map<String, String> changements) {
         return utilisateurAdminService.modifier(id, changements);
     }
 
     @org.springframework.web.bind.annotation.PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'SUPER_ADMINISTRATEUR')")
     public UtilisateurDTO modifier(@PathVariable UUID id, @Valid @RequestBody UtilisateurUpdateRequest request) {
         return utilisateurAdminService.modifier(id, request);
     }
 
     @org.springframework.web.bind.annotation.PutMapping("/{id}/statut")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'SUPER_ADMINISTRATEUR')")
     public UtilisateurDTO modifierStatut(@PathVariable UUID id, @Valid @RequestBody UtilisateurStatutRequest request) {
         return utilisateurAdminService.modifierStatut(id, request);
     }

@@ -42,7 +42,7 @@ public class AiAssistantController {
     public ResponseEntity<Map<String, Object>> chat(@RequestBody AiPromptRequest request) {
         String question = request == null || request.prompt() == null ? "" : request.prompt();
         String context = request == null ? null : request.context();
-        String role = currentUserService.getRoles().stream().findFirst().orElse("UTILISATEUR");
+        String role = currentUserService.getApplicationRole();
         List<String> permissions = currentUserService.getAuthorities().stream()
                 .map(authority -> authority.getAuthority())
                 .toList();
@@ -65,7 +65,7 @@ public class AiAssistantController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> reporting(@RequestBody AiPromptRequest request) {
         String question = request == null || request.prompt() == null ? "" : request.prompt();
-        String role = currentUserService.getRoles().stream().findFirst().orElse("UTILISATEUR");
+        String role = currentUserService.getApplicationRole();
         List<String> permissions = currentUserService.getAuthorities().stream()
                 .map(authority -> authority.getAuthority())
                 .toList();

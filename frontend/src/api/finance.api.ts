@@ -38,6 +38,27 @@ export interface PaiementRecord {
   dateExecution?: string;
   statut: string;
   referenceBancaire?: string;
+  referenceCheque?: string;
+  montantRetenues: number;
+  cachetVuBonAPayer: boolean;
+  receveurSignatureId?: string;
+  cosignataireSignatureId?: string;
+  doubleSignatureRequise: boolean;
+  justificationDifferement?: string;
+}
+
+export interface MandatPaiementDisponible {
+  id: string;
+  numeroMandat: string;
+  typeMandat: string;
+  montantTTCMandate: number;
+  dateMandatement: string;
+  doubleSignatureRequise: boolean;
+}
+
+export interface PaiementExecutionPayload {
+  referenceBancaire?: string;
+  referenceCheque?: string;
 }
 
 export async function listEngagements(): Promise<Engagement[]> {
@@ -53,15 +74,58 @@ export interface ExerciceReference {
 
 export interface FournisseurReference {
   id: string;
+  code?: string;
   nom: string;
-  raisonSociale?: string;
-  type?: string;
+  numeroContribuable?: string;
+  compteBancaire?: string;
+  actif?: boolean;
 }
 
 export interface LigneBudgetaireReference {
   id: string;
   code: string;
   libelle: string;
+  creditVote?: number;
+  creditEngage?: number;
+}
+
+export interface DocumentM5Reference {
+  id: string;
+  reference: string;
+  typeDocument: string;
+  ligneBudgetaireId?: string;
+  tiersId?: string;
+  objet?: string;
+  montantHT?: number;
+  montantTaxes?: number;
+  montantTTC?: number;
+  montantRestant?: number;
+  statut?: string;
+}
+
+export interface CreateDocumentM5Payload {
+  reference: string;
+  typeDocument: string;
+  ligneBudgetaireId: string;
+  tiersId?: string;
+  objet: string;
+  montantHT: number;
+  montantTaxes: number;
+}
+
+export interface CreateTiersPayload {
+  code: string;
+  raisonSociale: string;
+  numeroContribuable?: string;
+  compteBancaire?: string;
+}
+
+export interface CreateLigneBudgetairePayload {
+  exerciceId?: string;
+  budgetId?: string;
+  code: string;
+  libelle: string;
+  creditVote?: number;
 }
 
 export interface CreateEngagementPayload {
@@ -74,6 +138,7 @@ export interface CreateEngagementPayload {
   montantHT: number;
   tauxTVA: number;
   tauxImpot: number;
+  metadata?: Record<string, unknown>;
 }
 
 export async function getExerciceCourant(): Promise<ExerciceReference> {
@@ -86,8 +151,40 @@ export async function listFournisseurs(): Promise<FournisseurReference[]> {
   return response.data;
 }
 
+export async function listTiers(): Promise<FournisseurReference[]> {
+  const response = await api.get<FournisseurReference[]>("/referentiels/tiers");
+  return response.data;
+}
+
+export async function desactiverTiers(id: string): Promise<FournisseurReference> {
+  const response = await api.patch<FournisseurReference>(`/referentiels/tiers/${id}/desactiver`);
+  return response.data;
+}
+
 export async function listLignesBudgetaires(): Promise<LigneBudgetaireReference[]> {
   const response = await api.get<LigneBudgetaireReference[]>("/referentiels/lignes-budgetaires");
+  return response.data;
+}
+
+export async function listDocumentsM5(typeDocument?: string): Promise<DocumentM5Reference[]> {
+  const response = await api.get<DocumentM5Reference[]>("/referentiels/documents-m5", {
+    params: { typeDocument: typeDocument || undefined },
+  });
+  return response.data;
+}
+
+export async function createDocumentM5(payload: CreateDocumentM5Payload): Promise<DocumentM5Reference> {
+  const response = await api.post<DocumentM5Reference>("/referentiels/documents-m5", payload);
+  return response.data;
+}
+
+export async function createTiers(payload: CreateTiersPayload): Promise<FournisseurReference> {
+  const response = await api.post<FournisseurReference>("/referentiels/tiers", payload);
+  return response.data;
+}
+
+export async function createLigneBudgetaire(payload: CreateLigneBudgetairePayload): Promise<LigneBudgetaireReference> {
+  const response = await api.post<LigneBudgetaireReference>("/referentiels/lignes-budgetaires", payload);
   return response.data;
 }
 
@@ -112,6 +209,22 @@ export function submitEngagement(id: string) {
 
 export function validateEngagement(id: string) {
   return mutate<Engagement>(`/engagements/${id}/visa`);
+}
+
+export type EngagementAvis = "VISA" | "VISA_AVEC_OBSERVATIONS" | "VISA_AVEC_RESERVES";
+
+export async function decideEngagementVisa(
+  id: string,
+  typeAvis: EngagementAvis,
+  details?: string,
+): Promise<Engagement> {
+  const params = typeAvis === "VISA_AVEC_OBSERVATIONS"
+    ? { typeAvis, observations: details }
+    : typeAvis === "VISA_AVEC_RESERVES"
+      ? { typeAvis, reserves: details }
+      : { typeAvis };
+  const response = await api.post<Engagement>(`/engagements/${id}/visa`, undefined, { params });
+  return response.data;
 }
 
 export function confirmEngagement(id: string) {
@@ -179,6 +292,11 @@ export async function createMandat(exerciceId: string, typeMandat: string, liqui
   return response.data;
 }
 
+export async function listLiquidationsDisponiblesPourMandat(): Promise<LiquidationRecord[]> {
+  const response = await api.get<LiquidationRecord[]>("/mandats/liquidations-disponibles");
+  return response.data;
+}
+
 export function submitMandat(id: string) {
   return mutate<MandatRecord>(`/mandats/${id}/soumettre`);
 }
@@ -201,8 +319,13 @@ export async function getPaiement(id: string): Promise<PaiementRecord> {
   return response.data;
 }
 
-export async function createPaiement(mandatId: string, modeReglement: string, dateProgrammee?: string): Promise<PaiementRecord> {
-  const response = await api.post<PaiementRecord>(`/paiements/mandat/${mandatId}`, undefined, { params: { modeReglement, dateProgrammee: dateProgrammee || undefined } });
+export async function listMandatsAProgrammer(): Promise<MandatPaiementDisponible[]> {
+  const response = await api.get<MandatPaiementDisponible[]>("/paiements/mandats-a-payer");
+  return response.data;
+}
+
+export async function createPaiement(mandatId: string, modeReglement: string, dateProgrammee: string): Promise<PaiementRecord> {
+  const response = await api.post<PaiementRecord>(`/paiements/mandat/${mandatId}`, undefined, { params: { modeReglement, dateProgrammee } });
   return response.data;
 }
 
@@ -210,8 +333,19 @@ export function startPayment(id: string) {
   return mutate<PaiementRecord>(`/paiements/${id}/demarrer`);
 }
 
-export function executePayment(id: string) {
-  return mutate<PaiementRecord>(`/paiements/${id}/executer`);
+export async function cosignPayment(id: string): Promise<PaiementRecord> {
+  const response = await api.post<PaiementRecord>(`/paiements/${id}/cosigner`);
+  return response.data;
+}
+
+export async function executePayment(id: string, payload: PaiementExecutionPayload): Promise<PaiementRecord> {
+  const response = await api.post<PaiementRecord>(`/paiements/${id}/executer`, payload);
+  return response.data;
+}
+
+export async function deferPayment(id: string, justification: string): Promise<PaiementRecord> {
+  const response = await api.post<PaiementRecord>(`/paiements/${id}/differe`, { justification });
+  return response.data;
 }
 
 export function failPayment(id: string) {

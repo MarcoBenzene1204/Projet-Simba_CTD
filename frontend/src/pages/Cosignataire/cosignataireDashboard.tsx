@@ -6,6 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { reportingApi, type ReportingDashboard } from "@/api/reporting.api";
 import { useAuth } from "@/auth/AuthContext";
 import { useTenant } from "@/tenant/TenantContext";
+import { useAuthorization } from "@/auth/useAuthorization";
+import { useNavigate } from "react-router";
+import { DashboardLink } from "@/components/dashboard/DashboardLink";
+import { getDashboardDestination } from "@/lib/dashboardNavigation";
 
 const initialDashboard: ReportingDashboard = {
   role: "COSIGNATAIRE",
@@ -17,7 +21,9 @@ const initialDashboard: ReportingDashboard = {
 };
 
 export default function CosignataireDashboard() {
-  const { username } = useAuth();
+  const { username, role } = useAuth();
+  const { hasPermission } = useAuthorization();
+  const navigate = useNavigate();
   const { currentTenant } = useTenant();
   const [dashboard, setDashboard] = useState<ReportingDashboard>(initialDashboard);
 
@@ -56,7 +62,8 @@ export default function CosignataireDashboard() {
           const icons = [ShieldCheck, FileText, Users, CheckCircle2];
           const Icon = icons[index % icons.length];
           return (
-            <Card key={kpi.title} className="border-0 shadow-sm bg-orange-50/60">
+            <DashboardLink key={kpi.title} to={getDashboardDestination(kpi.title, role ?? "COSIGNATAIRE", hasPermission)} label={`Ouvrir ${kpi.title}`}>
+            <Card className="h-full border-0 bg-orange-50/60 shadow-sm transition-colors hover:bg-orange-100/70">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-slate-700">{kpi.title}</CardTitle>
                 <Icon className="h-4 w-4 text-orange-700" />
@@ -66,6 +73,7 @@ export default function CosignataireDashboard() {
                 <p className="text-xs text-slate-600">{kpi.detail}</p>
               </CardContent>
             </Card>
+            </DashboardLink>
           );
         })}
       </div>
@@ -82,11 +90,13 @@ export default function CosignataireDashboard() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-        <Button variant="outline" className="gap-2">
-          Consulter les visas <ArrowRight className="h-4 w-4" />
-        </Button>
-      </div>
+      {hasPermission("paiement:lire") && (
+        <div className="flex justify-end">
+          <Button variant="outline" className="gap-2" onClick={() => navigate("/dashboard/paiements")}>
+            Consulter les paiements à cosigner <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

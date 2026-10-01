@@ -71,10 +71,10 @@ export default function RoleReportingPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-900 p-6 text-white shadow-sm">
+      <section className="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-primary p-6 text-white shadow-sm">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-emerald-200">Reporting</p>
+            <p className="text-sm uppercase tracking-[0.2em] text-secondary">Reporting</p>
             <h1 className="mt-2 text-3xl font-semibold">{title}</h1>
           </div>
           <Button variant="secondary" size="sm" onClick={() => window.location.reload()} disabled={loading}>

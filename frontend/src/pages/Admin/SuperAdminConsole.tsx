@@ -92,11 +92,16 @@ export default function SuperAdminConsole() {
     };
   }, [ctds.length, enabledModules, users]);
 
-  const filteredUsers = users.filter((user) =>
-    `${user.nomUtilisateur ?? ""} ${user.email ?? ""} ${user.collectiviteNom ?? ""}`
+  const yaoundeCommuneSuffix = query.trim().match(/^yaoundé\s+(i|ii|iii|iv|v|vi|vii|viii)$/iu)?.[1];
+  const filteredUsers = users.filter((user) => {
+    if (yaoundeCommuneSuffix) {
+      return new RegExp(`\\byaoundé\\s+${yaoundeCommuneSuffix}\\b`, "iu").test(user.collectiviteNom ?? "");
+    }
+
+    return `${user.nomUtilisateur ?? ""} ${user.email ?? ""} ${user.collectiviteNom ?? ""}`
       .toLowerCase()
-      .includes(query.toLowerCase()),
-  );
+      .includes(query.toLowerCase());
+  });
 
   const overviewCards = [
     { title: "Utilisateurs", value: metrics.totalUsers, detail: "Comptes total", icon: Users },

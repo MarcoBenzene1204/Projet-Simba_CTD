@@ -10,8 +10,21 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { FileCheck, CheckCircle2, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { listEngagements } from "@/api/finance.api";
+import type { Engagement } from "@/types/budget";
+import { apiErrorMessage } from "@/api/api-error";
 
 export default function VisaHistoriquePage() {
+  const [engagements, setEngagements] = useState<Engagement[]>([]);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    void listEngagements()
+      .then((items) => setEngagements(items.filter((item) => ["VISE", "REJET"].includes(item.etat))))
+      .catch((requestError) => setError(apiErrorMessage(requestError, "Impossible de charger l'historique des visas.")));
+  }, []);
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">
@@ -25,6 +38,7 @@ export default function VisaHistoriquePage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {error && <p className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
           <Table>
             <TableHeader>
               <TableRow>
@@ -32,44 +46,55 @@ export default function VisaHistoriquePage() {
                 <TableHead>N° Engagement</TableHead>
                 <TableHead>Objet</TableHead>
                 <TableHead>Montant TTC</TableHead>
-                <TableHead className="text-right">Résultat Visa</TableHead>
+                <TableHead>Décision du CF</TableHead>
+                <TableHead>Observations / réserves</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow>
+              {engagements.map((engagement) => <TableRow key={engagement.id}>
                 <TableCell className="text-sm text-muted-foreground">
-                  18/08/2026
+                  {formatDate(engagement.dateVisa ?? engagement.dateCreation)}
                 </TableCell>
                 <TableCell className="font-mono font-medium">
-                  ENG-2026-0034
+                  {engagement.numeroEngagement}
                 </TableCell>
-                <TableCell>Travaux d'entretien de la mairie</TableCell>
-                <TableCell className="font-semibold">8 200 000 FCFA</TableCell>
-                <TableCell className="text-right">
-                  <Badge className="bg-success text-success-foreground gap-1">
-                    <CheckCircle2 className="h-3 w-3" /> Accordé
-                  </Badge>
+                <TableCell>{engagement.objet}</TableCell>
+                <TableCell className="font-semibold">{formatCurrency(engagement.montantTTC)}</TableCell>
+                <TableCell>
+                  {engagement.etat === "REJET"
+                    ? <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> Rejet</Badge>
+                    : <Badge className="gap-1 bg-success text-success-foreground"><CheckCircle2 className="h-3 w-3" />{avisLabel(engagement)}</Badge>}
                 </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="text-sm text-muted-foreground">
-                  15/08/2026
-                </TableCell>
-                <TableCell className="font-mono font-medium">
-                  ENG-2026-0021
-                </TableCell>
-                <TableCell>Achat de carburant</TableCell>
-                <TableCell className="font-semibold">2 000 000 FCFA</TableCell>
-                <TableCell className="text-right">
-                  <Badge variant="destructive" className="gap-1">
-                    <XCircle className="h-3 w-3" /> Refusé
-                  </Badge>
-                </TableCell>
-              </TableRow>
+                <TableCell className="max-w-md whitespace-normal text-sm text-muted-foreground">{avisDetails(engagement) || engagement.motifRejet || "-"}</TableCell>
+              </TableRow>)}
+              {engagements.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Aucune décision enregistrée.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
     </div>
   );
+}
+
+function formatDate(value?: string | Date) {
+  return value ? new Date(value).toLocaleDateString("fr-FR") : "-";
+}
+
+function formatCurrency(value: number | undefined) {
+  return `${new Intl.NumberFormat("fr-FR").format(value ?? 0)} FCFA`;
+}
+
+function avisLabel(engagement: Engagement) {
+  const avis = engagement.metadata?.dernierAvisCF;
+  if (avis === "VISA_AVEC_OBSERVATIONS") return "Visa avec observations";
+  if (avis === "VISA_AVEC_RESERVES") return "Visa avec réserves";
+  return "Visa accordé";
+}
+
+function avisDetails(engagement: Engagement) {
+  const observations = engagement.metadata?.observationsCF;
+  const reserves = engagement.metadata?.reservesCF;
+  return [observations, reserves]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" · ");
 }

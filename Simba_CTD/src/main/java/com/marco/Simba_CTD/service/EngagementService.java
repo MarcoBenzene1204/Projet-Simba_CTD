@@ -2,8 +2,11 @@ package com.marco.Simba_CTD.service;
 
 import com.marco.Simba_CTD.Enum.EtatRegularisation;
 import com.marco.Simba_CTD.entity.Engagement;
+import com.marco.Simba_CTD.Enum.RoleApplication;
 import com.marco.Simba_CTD.entity.Regularisation470XX;
 import com.marco.Simba_CTD.repository.EngagementRepository;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -20,20 +23,26 @@ import java.util.UUID;
 @Transactional
 public class EngagementService {
 
+    private final JdbcTemplate jdbcTemplate;
     private final EngagementRepository engagementRepository;
     private final CurrentUserService currentUserService;
     private final DocumentM5Service documentM5Service;
+    private final NotificationService notificationService;
 
     public EngagementService(
+            JdbcTemplate jdbcTemplate,
             EngagementRepository engagementRepository,
             CurrentUserService currentUserService,
-            DocumentM5Service documentM5Service) {
+            DocumentM5Service documentM5Service,
+            NotificationService notificationService) {
+        this.jdbcTemplate = jdbcTemplate;
         this.engagementRepository = engagementRepository;
         this.currentUserService = currentUserService;
         this.documentM5Service = documentM5Service;
+        this.notificationService = notificationService;
     }
 
-    @PreAuthorize("hasAuthority('engagement:creer')")
+    @PreAuthorize("hasRole('ORDONNATEUR') and hasAuthority('engagement:creer')")
     public Engagement creerEngagement(Engagement demande, Authentication authentication) {
         verifierUtilisateurActif();
         if (demande == null) {
@@ -114,33 +123,86 @@ public class EngagementService {
         return engagementRepository.save(engagement);
     }
 
-    @PreAuthorize("hasAuthority('engagement:soumettre')")
+    @PreAuthorize("hasRole('ORDONNATEUR') and hasAuthority('engagement:soumettre')")
     public Engagement soumettreAuControleurFinancier(UUID id, Authentication authentication) {
         Engagement engagement = obtenirDansTenant(id);
         verifierUtilisateurActif();
         validerReferenceM5Obligatoire(engagement);
-        engagement.reserverCredits();
+        verifierAvisImpositionDgi(engagement);
+        reserverCreditsDisponibles(engagement);
         engagement.soumettreAuControleurFinancier();
-        return engagementRepository.save(engagement);
+        Engagement saved = engagementRepository.save(engagement);
+        notificationService.notifierRoles(saved.getCollectiviteId(),
+            java.util.List.of(RoleApplication.CONTROLEUR_FINANCIER, RoleApplication.ADMINISTRATEUR),
+            currentUserService.getUtilisateur().getId(), "ENGAGEMENT_SOUMIS",
+            "Engagement soumis au contrôle",
+            saved.getNumeroEngagement() + " a été soumis au contrôle financier.",
+            "/dashboard/controleur/engagements");
+        return saved;
     }
 
-    @PreAuthorize("hasAuthority('engagement:valider')")
+    @PreAuthorize("hasRole('CONTROLEUR_FINANCIER') and hasAuthority('engagement:valider')")
     public Engagement apposerVisa(UUID id, Authentication authentication) {
+        return apposerVisa(id, "VISA", null, null, authentication);
+    }
+
+    @PreAuthorize("hasRole('CONTROLEUR_FINANCIER') and hasAuthority('engagement:valider')")
+    public Engagement apposerVisa(UUID id, String typeAvis, String observations, String reserves,
+            Authentication authentication) {
+        String avis = typeAvis == null ? "VISA" : typeAvis.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!java.util.Set.of("VISA", "VISA_AVEC_OBSERVATIONS", "VISA_AVEC_RESERVES").contains(avis)) {
+            throw new IllegalArgumentException("Le type d'avis financier est invalide.");
+        }
+        if ("VISA_AVEC_OBSERVATIONS".equals(avis) && (observations == null || observations.isBlank())) {
+            throw new IllegalArgumentException("Les observations sont obligatoires pour ce visa.");
+        }
+        if ("VISA_AVEC_RESERVES".equals(avis) && (reserves == null || reserves.isBlank())) {
+            throw new IllegalArgumentException("Les réserves sont obligatoires pour ce visa.");
+        }
         Engagement engagement = obtenirDansTenant(id);
         verifierUtilisateurActif();
-        engagement.apposerVisa(currentUserService.getUtilisateur().getId());
-        return engagementRepository.save(engagement);
+        UUID controleurId = currentUserService.getUtilisateur().getId();
+        UUID collectiviteId = engagement.getCollectiviteId();
+        jdbcTemplate.update(
+                "INSERT INTO avis_controle_financier (collectivite_id, engagement_id, controleur_id, type_avis, observations, reserves, date_decision) "
+                        + "VALUES (?, ?, ?, ?::type_avis_controle, ?, ?, CURRENT_TIMESTAMP)",
+                collectiviteId, engagement.getId(), controleurId, avis, observations, reserves);
+        engagement.apposerVisa(controleurId);
+        Map<String, Object> metadata = engagement.getMetadata() == null
+                ? new HashMap<>() : new HashMap<>(engagement.getMetadata());
+        metadata.put("dernierAvisCF", avis);
+        if (observations != null && !observations.isBlank()) metadata.put("observationsCF", observations.trim());
+        if (reserves != null && !reserves.isBlank()) metadata.put("reservesCF", reserves.trim());
+        engagement.setMetadata(metadata);
+        Engagement saved = engagementRepository.save(engagement);
+        String decision = switch (avis) {
+            case "VISA_AVEC_OBSERVATIONS" -> "a reçu un visa avec observations";
+            case "VISA_AVEC_RESERVES" -> "a reçu un visa avec réserves";
+            default -> "a reçu le visa du contrôleur financier";
+        };
+        String details = "VISA_AVEC_OBSERVATIONS".equals(avis) ? " Observations : " + observations.trim()
+                : "VISA_AVEC_RESERVES".equals(avis) ? " Réserves : " + reserves.trim() : "";
+        notificationService.notifierUtilisateur(saved.getOrdonnatorId(), saved.getCollectiviteId(),
+            "ENGAGEMENT_VISE", "Décision du contrôle financier",
+            saved.getNumeroEngagement() + " " + decision + "." + details,
+            "/dashboard/gestion-ordonnateur/engagement/" + saved.getId());
+        return saved;
     }
 
-    @PreAuthorize("hasAuthority('engagement:rejeter')")
+    @PreAuthorize("hasRole('CONTROLEUR_FINANCIER') and hasAuthority('engagement:rejeter')")
     public Engagement rejeter(UUID id, String motif, Authentication authentication) {
         Engagement engagement = obtenirDansTenant(id);
         verifierUtilisateurActif();
         engagement.rejeter(motif);
-        return engagementRepository.save(engagement);
+        Engagement saved = engagementRepository.save(engagement);
+        notificationService.notifierUtilisateur(saved.getOrdonnatorId(), saved.getCollectiviteId(),
+            "ENGAGEMENT_REJETE", "Engagement rejeté",
+            saved.getNumeroEngagement() + " a été rejeté par le contrôle financier. Motif : " + motif,
+            "/dashboard/gestion-ordonnateur/engagement/" + saved.getId());
+        return saved;
     }
 
-    @PreAuthorize("hasAuthority('engagement:confirmer')")
+    @PreAuthorize("hasRole('ORDONNATEUR') and hasAuthority('engagement:confirmer')")
     public Engagement confirmer(UUID id, Authentication authentication) {
         Engagement engagement = obtenirDansTenant(id);
         verifierUtilisateurActif();
@@ -161,14 +223,72 @@ public class EngagementService {
     @Transactional(readOnly = true)
     public List<Engagement> listerEngagements(Authentication authentication) {
         UUID collectiviteId = currentUserService.requireTenantId();
+        if ("CONTROLEUR_FINANCIER".equals(currentUserService.getApplicationRole())) {
+            return engagementRepository.findByCollectiviteId(collectiviteId);
+        }
         return engagementRepository.findByOrdonnatorIdAndCollectiviteId(
                 currentUserService.getUtilisateur().getId(), collectiviteId);
     }
 
-    public void validerEtRéserverCrédits(UUID id) {
+    public Engagement validerEtRéserverCrédits(UUID id) {
         Engagement engagement = obtenirDansTenant(id);
+        reserverCreditsDisponibles(engagement);
+        return engagementRepository.save(engagement);
+    }
+
+    private void verifierAvisImpositionDgi(Engagement engagement) {
+        Object reference = engagement.getMetadata() == null
+                ? null
+                : engagement.getMetadata().get("avisImpositionDgi");
+        if (!(reference instanceof String avis) || avis.isBlank()) {
+            throw new IllegalStateException(
+                    "La référence de l'avis d'imposition DGI est obligatoire avant la soumission au Contrôleur Financier.");
+        }
+    }
+
+    private void reserverCreditsDisponibles(Engagement engagement) {
+        if (Boolean.TRUE.equals(engagement.getCreditsReserves())) {
+            return;
+        }
+
+        BigDecimal montantTTC = engagement.getMontantTTC();
+        if (montantTTC == null || montantTTC.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Le montant TTC de l'engagement doit être supérieur à zéro.");
+        }
+
+        UUID collectiviteId = currentUserService.requireTenantId();
+        BigDecimal creditsDisponibles;
+        try {
+            creditsDisponibles = jdbcTemplate.queryForObject(
+                    "SELECT COALESCE(credit_vote, 0) + COALESCE(credit_modifie, 0) - COALESCE(credit_engage, 0) "
+                            + "FROM lignes_budgetaires WHERE id = ? AND collectivite_id = ? AND exercice_id = ? FOR UPDATE",
+                    BigDecimal.class,
+                    engagement.getLigneBudgetaireId(),
+                    collectiviteId,
+                    engagement.getExerciceId());
+        } catch (EmptyResultDataAccessException exception) {
+            throw new IllegalArgumentException("La ligne budgétaire de l'engagement est introuvable pour cet exercice.");
+        }
+
+        if (creditsDisponibles == null || creditsDisponibles.compareTo(montantTTC) < 0) {
+            throw new IllegalStateException("Crédits budgétaires insuffisants. Solde disponible : "
+                    + (creditsDisponibles == null ? BigDecimal.ZERO : creditsDisponibles).toPlainString() + " FCFA.");
+        }
+
+        int lignesMisesAJour = jdbcTemplate.update(
+                "UPDATE lignes_budgetaires SET credit_engage = credit_engage + ?, updated_at = CURRENT_TIMESTAMP "
+                        + "WHERE id = ? AND collectivite_id = ? AND exercice_id = ? "
+                        + "AND credit_vote + credit_modifie - credit_engage >= ?",
+                montantTTC,
+                engagement.getLigneBudgetaireId(),
+                collectiviteId,
+                engagement.getExerciceId(),
+                montantTTC);
+        if (lignesMisesAJour != 1) {
+            throw new IllegalStateException("Les crédits disponibles ont changé. Actualisez puis réessayez.");
+        }
+
         engagement.reserverCredits();
-        engagementRepository.save(engagement);
     }
 
     private Engagement obtenirDansTenant(UUID id) {
@@ -193,7 +313,9 @@ public class EngagementService {
             return;
         }
 
-        if (engagement.getDocumentM5Id() == null || !documentM5Service.documentExiste(engagement.getDocumentM5Id())) {
+        if (engagement.getDocumentM5Id() == null
+            || !documentM5Service.documentExiste(
+                engagement.getDocumentM5Id(), engagement.getTypeEngagement().name())) {
             throw new IllegalArgumentException("La référence M5 est obligatoire pour un engagement.");
         }
     }

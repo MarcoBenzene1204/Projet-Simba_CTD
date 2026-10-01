@@ -1,4 +1,5 @@
 import api from "./axios";
+import keycloak from "@/auth/keycloak";
 import type { RoleApplication } from "@/config/roleConfig";
 
 export interface CurrentUser {
@@ -50,6 +51,32 @@ interface CurrentUserApiResponse {
   collectiviteId?: string;
 }
 
+function tokenPermissions(): string[] {
+  const resourceAccess = keycloak.tokenParsed?.resource_access;
+  const permissions = new Set<string>();
+
+  if (resourceAccess && typeof resourceAccess === "object") {
+    for (const client of Object.values(resourceAccess as Record<string, unknown>)) {
+      if (!client || typeof client !== "object") continue;
+      const roles = (client as { roles?: unknown }).roles;
+      if (Array.isArray(roles)) {
+        roles.filter((role): role is string => typeof role === "string")
+          .filter((role) => role.includes(":"))
+          .forEach((role) => permissions.add(role));
+      }
+    }
+  }
+
+  const realmRoles = keycloak.tokenParsed?.realm_access?.roles;
+  if (Array.isArray(realmRoles)) {
+    realmRoles.filter((role): role is string => typeof role === "string")
+      .filter((role) => role.includes(":"))
+      .forEach((role) => permissions.add(role));
+  }
+
+  return [...permissions];
+}
+
 const VALID_ROLES: RoleApplication[] = [
   "SUPER_ADMINISTRATEUR",
   "ADMINISTRATEUR",
@@ -89,6 +116,11 @@ export async function getCurrentUser(): Promise<CurrentUser> {
     );
   }
 
+  const permissions = new Set([
+    ...(user.permissions ?? []),
+    ...tokenPermissions(),
+  ]);
+
   return {
     id: user.id,
     keycloakId: user.identifiantKeycloak,
@@ -103,7 +135,7 @@ export async function getCurrentUser(): Promise<CurrentUser> {
     collectiviteCouleurPrincipale: user.collectiviteCouleurPrincipale,
     collectiviteCouleurAccent: user.collectiviteCouleurAccent,
     statut: user.statut,
-    permissions: user.permissions ?? [],
+    permissions: [...permissions],
     role: resolvedRole,
     collectiviteId: user.collectiviteId,
   };

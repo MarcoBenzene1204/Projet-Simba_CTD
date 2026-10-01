@@ -2,19 +2,18 @@ import AppSidebar from "@/components/admin/app-sidebar";
 import { SiteHeader } from "@/components/admin/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Outlet } from "react-router";
-import { data } from "@/lib/CurrentUser";
 import { TenantSwitcher } from "@/tenant/TenantSwitcher";
 import { useAuth } from "@/auth/AuthContext";
 import type { role } from "@/lib/nav";
 import { ArisChatWidget } from "@/components/ai/ArisChatWidget";
 
 export default function AdminLayout() {
-  const { isAuthenticated, username, email, roles } = useAuth();
-
-  console.log("Authenticated :", isAuthenticated);
-  console.log("Username :", username);
-  console.log("Email :", email);
-  console.log("Roles :", roles);
+  const { username, email, role } = useAuth();
+  const user = {
+    name: username ?? "Super-administrateur SIMBA",
+    email: email ?? "",
+    role: role ?? "SUPER_ADMINISTRATEUR",
+  };
 
   return (
     <SidebarProvider
@@ -25,7 +24,7 @@ export default function AdminLayout() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar role={data.role as role} user={data} variant="inset">
+      <AppSidebar role={user.role as role} user={user} variant="inset">
         <div className="p-2">
           <TenantSwitcher />
         </div>

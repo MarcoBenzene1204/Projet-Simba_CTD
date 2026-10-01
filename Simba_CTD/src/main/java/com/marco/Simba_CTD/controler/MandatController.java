@@ -1,6 +1,7 @@
 package com.marco.Simba_CTD.controler;
 
 import com.marco.Simba_CTD.entity.Mandat;
+import com.marco.Simba_CTD.entity.Liquidation;
 import com.marco.Simba_CTD.service.MandatService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,6 +59,15 @@ public class MandatController {
                 mandatService.listerMandats(
                         authentication));
     }
+
+        @GetMapping("/liquidations-disponibles")
+        @PreAuthorize("hasAuthority('mandat:creer')")
+        public ResponseEntity<List<Liquidation>> listerLiquidationsDisponibles(
+                        Authentication authentication) {
+
+                return ResponseEntity.ok(
+                                mandatService.listerLiquidationsDisponiblesPourMandat(authentication));
+        }
 
     // =========================================================
     // DETAIL
@@ -128,7 +138,7 @@ public class MandatController {
     // =========================================================
 
     @PostMapping("/{id}/transmettre-receveur")
-    @PreAuthorize("hasAuthority('mandat:transmettre_receveur')")
+    @PreAuthorize("hasAuthority('mandat:transmettre')")
     public ResponseEntity<Mandat> transmettreReceveur(
             @PathVariable UUID id,
             Authentication authentication) {

@@ -48,15 +48,15 @@ public class LiquidationController {
         // =========================================================
 
         @PostMapping("/{id}/service-fait")
-        @PreAuthorize("hasAuthority('liquidation:attester_service_fait')")
+        @PreAuthorize("hasRole('CHEF_SERVICE') and hasAuthority('liquidation:attester_service_fait')")
         public ResponseEntity<Liquidation> attesterServiceFait(
-                        @PathVariable UUID id,
-                        Authentication authentication) {
+                @PathVariable UUID id,
+                Authentication authentication) {
 
                 return ResponseEntity.ok(
-                                liquidationService.attesterServiceFait(
-                                                id,
-                                                authentication));
+                        liquidationService.attesterServiceFait(
+                                id,
+                                authentication));
         }
 
         // =========================================================
@@ -64,15 +64,15 @@ public class LiquidationController {
         // =========================================================
 
         @PostMapping("/{id}/conformite-fiscale")
-        @PreAuthorize("hasAuthority('liquidation:valider_conformite')")
+        @PreAuthorize("hasRole('CONTROLEUR_FINANCIER') and hasAuthority('liquidation:valider')")
         public ResponseEntity<Liquidation> validerConformiteFiscale(
                         @PathVariable UUID id,
                         Authentication authentication) {
 
                 return ResponseEntity.ok(
-                                liquidationService.validerConformiteFiscale(
-                                                id,
-                                                authentication));
+                        liquidationService.validerConformiteFiscale(
+                                id,
+                                authentication));
         }
 
         // =========================================================
@@ -80,15 +80,15 @@ public class LiquidationController {
         // =========================================================
 
         @PostMapping("/{id}/soumettre")
-        @PreAuthorize("hasAuthority('liquidation:soumettre')")
+        @PreAuthorize("hasAuthority('liquidation:valider')")
         public ResponseEntity<Liquidation> soumettre(
-                        @PathVariable UUID id,
-                        Authentication authentication) {
+                @PathVariable UUID id,
+                Authentication authentication) {
 
                 return ResponseEntity.ok(
-                                liquidationService.soumettreAuControleurFinancier(
-                                                id,
-                                                authentication));
+                        liquidationService.soumettreAuControleurFinancier(
+                                id,
+                                authentication));
         }
 
         // =========================================================
@@ -96,15 +96,15 @@ public class LiquidationController {
         // =========================================================
 
         @PostMapping("/{id}/valider")
-        @PreAuthorize("hasAuthority('liquidation:valider')")
+        @PreAuthorize("hasRole('CONTROLEUR_FINANCIER') and hasAuthority('liquidation:valider')")
         public ResponseEntity<Liquidation> valider(
-                        @PathVariable UUID id,
-                        Authentication authentication) {
+                @PathVariable UUID id,
+                Authentication authentication) {
 
                 return ResponseEntity.ok(
-                                liquidationService.validerParControleur(
-                                                id,
-                                                authentication));
+                        liquidationService.validerParControleur(
+                                id,
+                                authentication));
         }
 
         // =========================================================
@@ -112,15 +112,15 @@ public class LiquidationController {
         // =========================================================
 
         @PostMapping("/{id}/rejeter")
-        @PreAuthorize("hasAuthority('liquidation:rejeter')")
+        @PreAuthorize("hasRole('CONTROLEUR_FINANCIER') and hasAuthority('liquidation:rejeter')")
         public ResponseEntity<Liquidation> rejeter(
-                        @PathVariable UUID id,
-                        Authentication authentication) {
+                @PathVariable UUID id,
+                Authentication authentication) {
 
                 return ResponseEntity.ok(
-                                liquidationService.rejeter(
-                                                id,
-                                                authentication));
+                        liquidationService.rejeter(
+                                id,
+                                authentication));
         }
 
         // =========================================================
@@ -128,15 +128,15 @@ public class LiquidationController {
         // =========================================================
 
         @PostMapping("/{id}/preparer-ordonnancement")
-        @PreAuthorize("hasAuthority('liquidation:preparer_ordonnancement')")
+        @PreAuthorize("hasAuthority('liquidation:valider')")
         public ResponseEntity<Liquidation> preparerOrdonnancement(
-                        @PathVariable UUID id,
-                        Authentication authentication) {
+                @PathVariable UUID id,
+                Authentication authentication) {
 
                 return ResponseEntity.ok(
-                                liquidationService.preparerPourOrdonnancement(
-                                                id,
-                                                authentication));
+                        liquidationService.preparerPourOrdonnancement(
+                                id,
+                                authentication));
         }
 
         // =========================================================
@@ -146,13 +146,13 @@ public class LiquidationController {
         @GetMapping("/{id}")
         @PreAuthorize("hasAuthority('liquidation:lire')")
         public ResponseEntity<Liquidation> obtenir(
-                        @PathVariable UUID id,
-                        Authentication authentication) {
+                @PathVariable UUID id,
+                Authentication authentication) {
 
                 return ResponseEntity.ok(
-                                liquidationService.obtenirLiquidation(
-                                                id,
-                                                authentication));
+                        liquidationService.obtenirLiquidation(
+                                id,
+                                authentication));
         }
 
         // =========================================================
@@ -165,8 +165,8 @@ public class LiquidationController {
                         Authentication authentication) {
 
                 return ResponseEntity.ok(
-                                liquidationService.listerLiquidations(
-                                                authentication));
+                        liquidationService.listerLiquidations(
+                                authentication));
         }
 
         // =========================================================
@@ -176,13 +176,13 @@ public class LiquidationController {
         @GetMapping("/engagement/{engagementId}")
         @PreAuthorize("hasAuthority('liquidation:lire')")
         public ResponseEntity<List<Liquidation>> listerParEngagement(
-                        @PathVariable UUID engagementId,
-                        Authentication authentication) {
+                @PathVariable UUID engagementId,
+                Authentication authentication) {
 
                 return ResponseEntity.ok(
-                                liquidationService.listerParEngagement(
-                                                engagementId,
-                                                authentication));
+                        liquidationService.listerParEngagement(
+                                engagementId,
+                                authentication));
         }
 
         // =========================================================
@@ -193,11 +193,11 @@ public class LiquidationController {
         @PreAuthorize("hasAuthority('liquidation:supprimer')")
         @ResponseStatus(HttpStatus.NO_CONTENT)
         public void supprimer(
-                        @PathVariable UUID id,
-                        Authentication authentication) {
+                @PathVariable UUID id,
+                Authentication authentication) {
 
                 liquidationService.supprimer(
-                                id,
-                                authentication);
+                        id,
+                        authentication);
         }
 }

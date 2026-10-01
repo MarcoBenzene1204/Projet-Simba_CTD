@@ -27,16 +27,19 @@ public class MandatService {
         private final LiquidationRepository liquidationRepository;
         private final LigneMandatRepository ligneMandatRepository;
         private final SecurityContextService securityContextService;
+        private final NotificationService notificationService;
 
         public MandatService(
                         MandatRepository mandatRepository,
                         LiquidationRepository liquidationRepository,
                         LigneMandatRepository ligneMandatRepository,
-                        SecurityContextService securityContextService) {
+                        SecurityContextService securityContextService,
+                        NotificationService notificationService) {
                 this.mandatRepository = mandatRepository;
                 this.liquidationRepository = liquidationRepository;
                 this.ligneMandatRepository = ligneMandatRepository;
                 this.securityContextService = securityContextService;
+                this.notificationService = notificationService;
         }
 
         // =========================================================
@@ -291,8 +294,15 @@ public class MandatService {
                                 collectiviteId);
 
                 mandat.soumettreAuControleurFinancier();
-
-                return mandatRepository.save(mandat);
+                Mandat saved = mandatRepository.save(mandat);
+                notificationService.notifierRoles(collectiviteId,
+                                List.of(com.marco.Simba_CTD.Enum.RoleApplication.CONTROLEUR_FINANCIER,
+                                                com.marco.Simba_CTD.Enum.RoleApplication.ADMINISTRATEUR),
+                                securityContextService.getCurrentUserId(), "MANDAT_SOUMIS",
+                                "Mandat soumis au contrôle",
+                                saved.getNumeroMandat() + " a été soumis au contrôle financier.",
+                                "/dashboard/controleur/mandats");
+                return saved;
         }
 
         // =========================================================
@@ -314,8 +324,12 @@ public class MandatService {
                                 collectiviteId);
 
                 mandat.apposerVisaCFEtCachet(controleurId);
-
-                return mandatRepository.save(mandat);
+                Mandat saved = mandatRepository.save(mandat);
+                notificationService.notifierUtilisateur(saved.getOrdonnatorId(), collectiviteId,
+                                "MANDAT_VISE", "Mandat visé",
+                                saved.getNumeroMandat() + " a reçu le visa du contrôle financier.",
+                                "/dashboard/gestion-ordonnateur/mandats/" + saved.getId());
+                return saved;
         }
 
         // =========================================================
@@ -331,8 +345,12 @@ public class MandatService {
                                 collectiviteId);
 
                 mandat.rejeter();
-
-                return mandatRepository.save(mandat);
+                Mandat saved = mandatRepository.save(mandat);
+                notificationService.notifierUtilisateur(saved.getOrdonnatorId(), collectiviteId,
+                                "MANDAT_REJETE", "Mandat rejeté",
+                                saved.getNumeroMandat() + " a été rejeté par le contrôle financier.",
+                                "/dashboard/gestion-ordonnateur/mandats/" + saved.getId());
+                return saved;
         }
 
         // =========================================================
@@ -354,8 +372,12 @@ public class MandatService {
                                 collectiviteId);
 
                 mandat.transmettreAuReceveur(receveurId);
-
-                return mandatRepository.save(mandat);
+                Mandat saved = mandatRepository.save(mandat);
+                notificationService.notifierUtilisateur(receveurId, collectiviteId,
+                                "MANDAT_TRANSMIS", "Mandat transmis au receveur",
+                                saved.getNumeroMandat() + " est disponible pour prise en charge.",
+                                "/dashboard/paiements");
+                return saved;
         }
 
         // =========================================================
@@ -433,6 +455,17 @@ public class MandatService {
                 return creerMandat(TenantContext.requireTenant(), exerciceId, type, liquidations, actorId(auth));
         }
         public List<Mandat> listerMandats(Authentication ignored) { return listerMandats(TenantContext.requireTenant()); }
+        public List<Liquidation> listerLiquidationsDisponiblesPourMandat(Authentication ignored) {
+                UUID collectiviteId = TenantContext.requireTenant();
+                return liquidationRepository.findByCollectiviteId(collectiviteId)
+                                .stream()
+                                .filter(liquidation -> liquidation.getEtat() == Liquidation.EtatLiquidation.PRETE_ORDONNANCEMENT)
+                                .filter(Liquidation::serviceFaitEstAtteste)
+                                .filter(Liquidation::conformiteFiscaleEstValide)
+                                .filter(liquidation -> !ligneMandatRepository.existsByLiquidationIdAndCollectiviteId(
+                                                liquidation.getId(), collectiviteId))
+                                .toList();
+        }
         public Mandat obtenirMandat(UUID id, Authentication ignored) { return obtenirMandat(id, TenantContext.requireTenant()); }
         public Mandat soumettreAuControleurFinancier(UUID id, Authentication ignored) { return soumettreAuControleurFinancier(id, TenantContext.requireTenant()); }
         public Mandat apposeVisaCFEtCachet(UUID id, Authentication auth) { return apposeVisaCFEtCachet(id, TenantContext.requireTenant(), actorId(auth)); }

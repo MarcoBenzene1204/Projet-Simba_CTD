@@ -46,6 +46,11 @@ import RoleReportingPage from "@/pages/Admin/RoleReportingPage";
 import ProfilePage from "@/pages/Compte/ProfilePage";
 import NotificationsPage from "@/pages/Compte/NotificationsPage";
 import BillingPage from "@/pages/Compte/BillingPage";
+import VisaAttentePage from "@/pages/controlleur/VisaAttentePage";
+import VisaHistoriquePage from "@/pages/Admin/VisaHistoriquePage";
+import RegiePage from "@/pages/Regie/RegiePage";
+import DocumentsM5Page from "../pages/Admin/DocumentsM5Page";
+import RegieApurementsPage from "@/pages/Regie/RegieApurementsPage";
 
 /*
  * Dashboard affiché en fonction du rôle
@@ -172,6 +177,11 @@ export const router = createBrowserRouter([
             children: [{ index: true, element: <SuperAdminConsole /> }],
           },
           {
+            path: "documents-m5",
+            element: <ProtectedRoute allowedRoles={["ADMINISTRATEUR", "SUPER_ADMINISTRATEUR"]} allowedPermissions={["parametrage:lire"]} />,
+            children: [{ index: true, element: <DocumentsM5Page /> }],
+          },
+          {
             path: "journalisation-systeme",
             element: <ProtectedRoute allowedRoles={["SUPER_ADMINISTRATEUR"]} />,
             children: [{ index: true, element: <SuperAdminConsole /> }],
@@ -187,6 +197,25 @@ export const router = createBrowserRouter([
             children: [{ index: true, element: <RoleReportingPage /> }],
           },
           {
+            path: "regularisations",
+            element: <ProtectedRoute allowedRoles={["ORDONNATEUR", "RECEVEUR", "REGISSEUR", "CONTROLEUR_FINANCIER"]} />,
+            children: [{ index: true, element: <RegularisationPage /> }],
+          },
+          {
+            path: "paiements",
+            element: <ProtectedRoute allowedRoles={["RECEVEUR", "COSIGNATAIRE"]} />,
+            children: [
+              { index: true, element: <PaiementPage /> },
+              { path: ":id", element: <PaiementDetailsPage /> },
+              { path: "nouveau", element: <NouveauPaiement /> },
+            ],
+          },
+          {
+            path: "regie",
+            element: <ProtectedRoute allowedRoles={["REGISSEUR", "ORDONNATEUR", "ADMINISTRATEUR"]} allowedPermissions={["regie:lire"]} />,
+            children: [{ index: true, element: <RegiePage /> }],
+          },
+          {
             path: "journalisation",
             element: <ProtectedRoute allowedRoles={["ADMINISTRATEUR"]} />,
             children: [
@@ -198,7 +227,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "referentiel",
-            element: <ProtectedRoute allowedRoles={["ADMINISTRATEUR", "ORDONNATEUR"]} />,
+            element: <ProtectedRoute allowedRoles={["ADMINISTRATEUR", "ORDONNATEUR", "CONTROLEUR_FINANCIER"]} />,
             children: [
               {
                 path: "tiers",
@@ -214,7 +243,7 @@ export const router = createBrowserRouter([
           /* SECTION ORDONNATEUR */
           {
             path: "gestion-ordonnateur",
-            element: <ProtectedRoute allowedRoles={["ORDONNATEUR", "CHEF_SERVICE"]} />,
+            element: <ProtectedRoute allowedRoles={["ADMINISTRATEUR", "ORDONNATEUR", "CHEF_SERVICE"]} />,
             children: [
               {
                 path: "lignes-budgetaires",
@@ -267,17 +296,17 @@ export const router = createBrowserRouter([
               },
               {
                 path: "paiements",
-                element: <ProtectedRoute allowedPermissions={["paiement:lire"]} />,
+                element: <ProtectedRoute allowedRoles={["RECEVEUR", "COSIGNATAIRE"]} allowedPermissions={["paiement:lire"]} />,
                 children: [{ index: true, element: <PaiementPage /> }],
               },
               {
                 path: "paiements/:id",
-                element: <ProtectedRoute allowedPermissions={["paiement:lire"]} />,
+                element: <ProtectedRoute allowedRoles={["RECEVEUR", "COSIGNATAIRE"]} allowedPermissions={["paiement:lire"]} />,
                 children: [{ index: true, element: <PaiementDetailsPage /> }],
               },
               {
                 path: "paiements/nouveau",
-                element: <ProtectedRoute allowedPermissions={["paiement:creer"]} />,
+                element: <ProtectedRoute allowedRoles={["RECEVEUR"]} allowedPermissions={["paiement:creer"]} />,
                 children: [{ index: true, element: <NouveauPaiement /> }],
               },
               {
@@ -287,7 +316,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: "service-fait",
-                element: <ProtectedRoute allowedPermissions={["liquidation:attester_service_fait"]} />,
+                element: <ProtectedRoute allowedRoles={["CHEF_SERVICE"]} allowedPermissions={["liquidation:attester_service_fait"]} />,
                 children: [{ index: true, element: <ServiceFaitPage /> }],
               },
             ],
@@ -315,7 +344,46 @@ export const router = createBrowserRouter([
                 allowedRoles={["ADMINISTRATEUR", "CONTROLEUR_FINANCIER"]}
               />
             ),
-            children: [{ index: true, element: <ControleurDashboard /> }],
+            children: [{
+              index: true,
+              element: <ControleurDashboard />,
+            }],
+          },
+          {
+            path: "controleur/en-attente",
+            element: <ProtectedRoute allowedRoles={["CONTROLEUR_FINANCIER", "ADMINISTRATEUR"]} allowedPermissions={["engagement:lire"]} />,
+            children: [{ index: true, element: <VisaAttentePage /> }],
+          },
+          {
+            path: "controleur/historique",
+            element: <ProtectedRoute allowedRoles={["CONTROLEUR_FINANCIER", "ADMINISTRATEUR"]} allowedPermissions={["engagement:lire"]} />,
+            children: [{ index: true, element: <VisaHistoriquePage /> }],
+          },
+          {
+            path: "controleur/engagements",
+            element: <ProtectedRoute allowedRoles={["CONTROLEUR_FINANCIER", "ADMINISTRATEUR"]} allowedPermissions={["engagement:lire"]} />,
+            children: [{ index: true, element: <EngagementPage modeControleur /> }],
+          },
+          {
+            path: "controleur/liquidations",
+            element: <ProtectedRoute allowedRoles={["CONTROLEUR_FINANCIER", "ADMINISTRATEUR"]} allowedPermissions={["liquidation:lire"]} />,
+            children: [
+              { index: true, element: <ListeLiquidation modeControleur /> },
+              { path: ":id", element: <LiquidationDetailsPage /> },
+            ],
+          },
+          {
+            path: "controleur/mandats",
+            element: <ProtectedRoute allowedRoles={["CONTROLEUR_FINANCIER", "ADMINISTRATEUR"]} allowedPermissions={["mandat:lire"]} />,
+            children: [
+              { index: true, element: <ListeMandat modeControleur /> },
+              { path: ":id", element: <MandatDetailsPage /> },
+            ],
+          },
+          {
+            path: "controleur/regies",
+            element: <ProtectedRoute allowedRoles={["CONTROLEUR_FINANCIER", "ADMINISTRATEUR"]} allowedPermissions={["regie:apurer"]} />,
+            children: [{ index: true, element: <RegieApurementsPage /> }],
           },
         ],
       },

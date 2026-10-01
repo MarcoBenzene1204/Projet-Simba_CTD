@@ -1,6 +1,23 @@
 import axios from "axios";
 import keycloak from "@/auth/keycloak";
 
+function readSelectedTenantId(): string | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  const candidates = [
+    localStorage.getItem("simba_current_tenant_id"),
+    sessionStorage.getItem("simba_current_tenant_id"),
+  ];
+
+  const found = candidates.find(
+    (value): value is string => Boolean(value && value.trim() && value !== "null"),
+  );
+
+  return found?.trim();
+}
+
 //Axios est un element qui permet de connecter notre backend Spring-boot à ce frontend react-typescript/Vite
 // Axios relie le frontend React/TypeScript au backend Spring Boot.
 const api = axios.create({
@@ -13,6 +30,16 @@ const api = axios.create({
 
 api.interceptors.request.use(
   async (config) => {
+    const tenantId = readSelectedTenantId();
+
+    if (tenantId) {
+      config.headers = {
+        ...(config.headers ?? {}),
+        "X-Tenant-Id": tenantId,
+        "X-Collectivite-Id": tenantId,
+      } as unknown as typeof config.headers;
+    }
+
     if (keycloak.authenticated) {
       try {
         await keycloak.updateToken(30);

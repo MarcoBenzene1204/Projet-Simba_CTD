@@ -4,6 +4,7 @@ import com.marco.Simba_CTD.Enum.EtatRegularisation;
 import com.marco.Simba_CTD.entity.Engagement;
 import com.marco.Simba_CTD.entity.Regularisation470XX;
 import com.marco.Simba_CTD.repository.Regularisation470XXRepository;
+import com.marco.Simba_CTD.Enum.RoleApplication;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -21,15 +22,18 @@ public class Regularisation470XXService {
     private final Regularisation470XXRepository repository;
     private final CurrentUserService currentUserService;
     private final EngagementService engagementService;
+        private final NotificationService notificationService;
 
     public Regularisation470XXService(
             Regularisation470XXRepository repository,
             EngagementService engagementService,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            NotificationService notificationService) {
 
         this.repository = repository;
         this.engagementService = engagementService;
         this.currentUserService = currentUserService;
+        this.notificationService = notificationService;
     }
 
     // ============================================================
@@ -122,7 +126,12 @@ public class Regularisation470XXService {
         regularisation.setDateEcheanceRegularisation(
                 LocalDate.now().plusDays(30));
 
-        return repository.save(regularisation);
+        Regularisation470XX saved = repository.save(regularisation);
+        notificationService.notifierRoles(collectiviteId, List.of(RoleApplication.ADMINISTRATEUR),
+                currentUserService.getUtilisateur().getId(), "REGULARISATION_DETECTEE",
+                "Nouvelle régularisation détectée", saved.getNumero() + " nécessite un traitement.",
+                "/dashboard/regularisations");
+        return saved;
     }
 
         @PreAuthorize("hasAuthority('regularisation:comptabiliser')")
@@ -157,7 +166,12 @@ public class Regularisation470XXService {
         regularisation.setEtat(
                 EtatRegularisation.NOTIFIEE);
 
-        return repository.save(regularisation);
+        Regularisation470XX saved = repository.save(regularisation);
+        notificationService.notifierUtilisateur(saved.getOrdonnateurId(), saved.getCollectiviteId(),
+                "REGULARISATION_NOTIFIEE", "Régularisation à traiter",
+                "La régularisation " + saved.getNumero() + " vous a été notifiée.",
+                "/dashboard/regularisations");
+        return saved;
     }
 
     @PreAuthorize("hasAuthority('regularisation:engager')")
@@ -313,7 +327,12 @@ public class Regularisation470XXService {
         regularisation.setEtat(
                 EtatRegularisation.VISE_CF);
 
-        return repository.save(regularisation);
+        Regularisation470XX saved = repository.save(regularisation);
+        notificationService.notifierUtilisateur(saved.getOrdonnateurId(), saved.getCollectiviteId(),
+                "REGULARISATION_VISEE", "Régularisation visée",
+                "La régularisation " + saved.getNumero() + " a reçu le visa financier.",
+                "/dashboard/regularisations");
+        return saved;
     }
 
     // REJET CF
@@ -337,7 +356,12 @@ public class Regularisation470XXService {
         regularisation.setEtat(
                 EtatRegularisation.REJET_CF);
 
-        return repository.save(regularisation);
+        Regularisation470XX saved = repository.save(regularisation);
+        notificationService.notifierUtilisateur(saved.getOrdonnateurId(), saved.getCollectiviteId(),
+                "REGULARISATION_REJETEE", "Régularisation rejetée",
+                "La régularisation " + saved.getNumero() + " a été rejetée. Motif : " + motif,
+                "/dashboard/regularisations");
+        return saved;
     }
 
     // LIQUIDATION
